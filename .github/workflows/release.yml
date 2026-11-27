@@ -7,16 +7,12 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: mekaneed-production
-  queue: max
-
 defaults:
   run:
     shell: bash
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '26'
   VERCEL_CLI_VERSION: '67.0.0'
 
 jobs:
@@ -73,22 +69,40 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    concurrency:
+      group: mekaneed-production
+      queue: max
     environment:
       name: production
       url: https://mekaneed-app.vercel.app/
     steps:
-      - name: Guard against deploying an old rerun
+      - name: Check the release against production
         id: current
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$GITHUB_RUN_ATTEMPT" != 1 ]]; then
-            main_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
-            if [[ "$main_sha" != "$GITHUB_SHA" ]]; then
-              echo "::notice::This rerun was superseded by a newer commit on main."
-              echo "deploy=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
+          marker="$RUNNER_TEMP/mekaneed-live-release.json"
+          status="$(curl --silent --show-error --retry 3 --max-time 30 \
+            -H 'Cache-Control: no-cache' -o "$marker" -w '%{http_code}' \
+            'https://mekaneed-app.vercel.app/release.json')"
+          if [[ "$status" == 200 ]]; then
+            live_sha="$(jq -er '.commit | select(test("^[0-9a-f]{40}$"))' "$marker")"
+            relationship="$(gh api "repos/$GITHUB_REPOSITORY/compare/$live_sha...$GITHUB_SHA" --jq .status)"
+            case "$relationship" in
+              behind)
+                echo "::notice::Production already serves a newer commit. This release was not deployed."
+                echo "deploy=false" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+              ahead|identical) ;;
+              *)
+                echo "::error::This release and the live commit have diverged."
+                exit 1
+                ;;
+            esac
+          elif [[ "$status" != 404 ]]; then
+            echo "::error::Could not check the current production release (HTTP $status)."
+            exit 1
           fi
           echo "deploy=true" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -101,6 +115,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
+      - name: Install the pinned Vercel CLI
+        if: steps.current.outputs.deploy == 'true'
+        run: npm install --global --no-audit --no-fund "vercel@$VERCEL_CLI_VERSION"
       - name: Build and deploy the released commit
         if: steps.current.outputs.deploy == 'true'
         env:
@@ -113,16 +130,18 @@ jobs:
             echo "::error::Set VERCEL_TOKEN in the production environment and the two Vercel project variables."
             exit 1
           fi
-          vercel=(npx --yes "vercel@$VERCEL_CLI_VERSION")
-          "${vercel[@]}" pull --yes --environment=production --token "$VERCEL_TOKEN"
-          "${vercel[@]}" build --prod --token "$VERCEL_TOKEN"
-          "${vercel[@]}" deploy --prebuilt --prod --token "$VERCEL_TOKEN" \
+          vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+          vercel build --prod --token "$VERCEL_TOKEN"
+          jq -n --arg commit "$GITHUB_SHA" --arg tag "$RELEASE_TAG" '{commit: $commit, tag: $tag}' \
+            > .vercel/output/static/release.json
+          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN" \
             --meta "releaseTag=$RELEASE_TAG" --meta "sourceCommit=$GITHUB_SHA"
       - name: Verify the public site matches the release
         if: steps.current.outputs.deploy == 'true'
         run: |
-          for asset in index.html styles.css app.mjs review.mjs comparison.mjs; do
+          for expected in dist/* .vercel/output/static/release.json; do
+            asset="${expected##*/}"
             curl --fail --silent --show-error --retry 3 --retry-all-errors --max-time 30 \
               "https://mekaneed-app.vercel.app/$asset" -o "$RUNNER_TEMP/mekaneed-$asset"
-            cmp "dist/$asset" "$RUNNER_TEMP/mekaneed-$asset"
+            cmp "$expected" "$RUNNER_TEMP/mekaneed-$asset"
           done

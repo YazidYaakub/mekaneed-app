@@ -9,6 +9,12 @@
   },
   "headers": [
     {
+      "source": "/release.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
       "source": "/(.*)\\.mjs",
       "headers": [
         { "key": "Content-Type", "value": "text/javascript; charset=utf-8" }
