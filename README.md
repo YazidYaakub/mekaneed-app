@@ -20,7 +20,9 @@ Open the [live demo](https://mekaneed-app.vercel.app/), choose a sample, and sel
 | **Warranty is blurred** | A partial review keeps the RM450 total and marks the warranty **Unreadable**. |
 | **Copy is too blurred** | The case asks for a clearer copy before a review can be prepared. The replacement goes back through the staff check. |
 
-From a regular or partial review, you can do the following.
+Open **View original quotation** on the review to check the workshop’s wording. The review puts the questions to ask before the optional comparison. Select **Try another sample** at the bottom to start again with the default vehicle details.
+
+From a regular or partial review, you can also do the following.
 
 - **Compare quotations.** Select **Add a second quotation** and confirm the vehicle and repair. The RM450 and RM550 samples show differences in parts, labour and warranty. Brake cleaning is listed only in the RM550 quotation.
 - **Apply a clarification.** Select **Add workshop reply** and check the reply against Quote A. The revised review shows what changed and keeps the original wording and RM450 total.

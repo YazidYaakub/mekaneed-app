@@ -333,7 +333,7 @@ textarea { resize: vertical; }
   font-weight: 700;
   cursor: pointer;
 }
-.clarification-sources h3 { margin: 12px 0 6px; font-size: .91rem; }
+.clarification-sources :is(h2, h3) { margin: 12px 0 6px; font-size: .91rem; }
 .clarification-sources blockquote { margin: 0; font-size: .88rem; }
 .report-controls { margin-top: 12px; }
 .report-controls > p:not(:empty) { margin-top: 7px; font-size: .89rem; line-height: 1.5; color: var(--muted); }

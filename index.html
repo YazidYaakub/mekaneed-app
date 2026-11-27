@@ -176,6 +176,15 @@
           <div><span class="amount-label">WORKSHOP QUOTED TOTAL</span><strong id="review-total"></strong></div>
           <div><p id="review-work"></p><p class="amount-note">One combined amount for parts and labour.</p></div>
         </div>
+        <details class="card clarification-sources" id="review-source">
+          <summary id="review-source-summary">View original quotation</summary>
+          <h2>Original Quote A</h2>
+          <blockquote id="review-source-original"></blockquote>
+          <div id="review-source-clarification" hidden>
+            <h2>Workshop reply</h2>
+            <blockquote id="review-source-reply"></blockquote>
+          </div>
+        </details>
         <div class="notice" id="partial-notice" hidden>Staff could verify the work and total. Ask the workshop to clarify the unreadable detail.</div>
         <section class="card evidence-card" id="review-identity" hidden>
           <h2>Workshop check for Quote A</h2>
@@ -195,27 +204,20 @@
             </thead>
             <tbody id="clarification-changes"></tbody>
           </table>
-          <details class="clarification-sources">
-            <summary>View original quote and workshop reply</summary>
-            <h3>Original Quote A</h3>
-            <blockquote id="clarification-original"></blockquote>
-            <h3>Workshop reply</h3>
-            <blockquote id="clarification-reply"></blockquote>
-          </details>
         </section>
-        <div class="card compare-invitation">
-          <div>
-            <h2>Have another quotation?</h2>
-            <p>Compare quotes for the same vehicle and repair.</p>
-          </div>
-          <button class="secondary" type="button" data-action="start-comparison">Add a second quotation <span aria-hidden="true">→</span></button>
-        </div>
         <div class="card questions">
           <h2>Questions for the workshop</h2>
           <ol id="review-questions"></ol>
           <button class="secondary" type="button" data-action="copy">Copy questions</button>
           <p class="copy-status" id="copy-status" role="status"></p>
           <textarea id="copy-fallback" aria-label="Questions to copy" rows="5" readonly hidden></textarea>
+        </div>
+        <div class="card compare-invitation">
+          <div>
+            <h2>Have another quotation?</h2>
+            <p>Compare quotes for the same vehicle and repair.</p>
+          </div>
+          <button class="secondary" type="button" data-action="start-comparison">Add a second quotation <span aria-hidden="true">→</span></button>
         </div>
         <div class="card compare-invitation" id="clarification-invitation">
           <div>
@@ -245,6 +247,7 @@
         </div>
         <div class="actions">
           <button class="secondary" id="edit-vehicle-action" type="button" data-action="edit-vehicle">Back to vehicle details</button>
+          <button class="secondary" id="try-another-sample" type="button" data-action="try-another-sample">Try another sample</button>
         </div>
       </section>
 
