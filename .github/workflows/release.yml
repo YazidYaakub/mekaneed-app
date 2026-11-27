@@ -48,7 +48,8 @@ jobs:
         run: |
           tag="v0.1.$GITHUB_RUN_NUMBER"
           ref="repos/$GITHUB_REPOSITORY/git/ref/tags/$tag"
-          previous_sha="$(gh api "$ref" --jq '.object.sha' 2>/dev/null || true)"
+          existing_ref="$(git ls-remote --refs --tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "refs/tags/$tag")"
+          previous_sha="${existing_ref%%$'\t'*}"
           if [[ -n "$previous_sha" && "$previous_sha" != "$GITHUB_SHA" ]]; then
             echo "::error::Release tag $tag already points to a different commit."
             exit 1
