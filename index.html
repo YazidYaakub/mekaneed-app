@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en-MY">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#112341">
+  <title>Mekaneed · Quotation review</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">M</span>Mekaneed</div>
+      <span class="demo-label"><span aria-hidden="true"></span>Fictional demo</span>
+    </div>
+  </header>
+  <main class="workspace" id="workspace">
+    <aside class="workflow" id="workflow" aria-label="Quotation review progress">
+      <p class="workflow-label">QUOTATION REVIEW</p>
+      <ol class="steps">
+        <li data-step="sample" aria-current="step"><span class="step-number" aria-hidden="true">1</span><span>Quotation</span></li>
+        <li data-step="verify"><span class="step-number" aria-hidden="true">2</span><span>Staff check</span></li>
+        <li data-step="owner"><span class="step-number" aria-hidden="true">3</span><span>Vehicle</span></li>
+        <li data-step="review"><span class="step-number" aria-hidden="true">4</span><span>Review</span></li>
+      </ol>
+    </aside>
+
+    <div class="screen-area">
+      <section class="card pilot-case-bar" id="pilot-case-bar" aria-label="Current staff case" hidden>
+        <div class="pilot-case-header">
+          <div>
+            <strong id="pilot-case-number"></strong>
+            <p id="pilot-case-stage"></p>
+          </div>
+          <div class="pilot-case-actions">
+            <button class="primary" id="pilot-delivery-action" type="button" data-action="open-delivery" hidden>Record delivery</button>
+            <button class="secondary" id="pilot-records-action" type="button" data-action="open-pilot-records">Pilot records</button>
+            <button class="secondary" type="button" data-action="open-staff-queue">Back to staff queue</button>
+          </div>
+        </div>
+        <details class="clarification-sources">
+          <summary>Case history</summary>
+          <ol class="pilot-history" id="pilot-case-history"></ol>
+        </details>
+        <p class="report-status" id="pilot-case-message" role="status"></p>
+      </section>
+
+      <section data-screen="sample">
+        <div class="screen-heading">
+          <h1 tabindex="-1">Start with a quotation</h1>
+          <p>Choose a fictional workshop quotation to try a review before approving a repair.</p>
+        </div>
+        <form id="sample-form">
+          <fieldset class="sample-options">
+            <legend class="sr-only">Choose a sample quotation</legend>
+            <label class="sample-option">
+              <input type="radio" name="sample" value="legible" checked>
+              <span class="option-body">
+                <strong>Readable quotation</strong>
+                <span>Front brake pads and labour, RM450 in one amount.</span>
+              </span>
+            </label>
+            <label class="sample-option">
+              <input type="radio" name="sample" value="partial">
+              <span class="option-body">
+                <strong>Warranty is blurred</strong>
+                <span>The work and total are clear, but the warranty line is unreadable.</span>
+              </span>
+            </label>
+            <label class="sample-option">
+              <input type="radio" name="sample" value="unclear">
+              <span class="option-body">
+                <strong>Copy is too blurred</strong>
+                <span>The proposed work and total cannot be read.</span>
+              </span>
+            </label>
+          </fieldset>
+          <div class="actions">
+            <button class="primary" type="submit">Continue to staff check <span aria-hidden="true">→</span></button>
+            <button class="secondary" type="button" data-action="open-saved" hidden>Open saved review</button>
+          </div>
+        </form>
+        <section class="card staff-entry" aria-labelledby="staff-entry-heading">
+          <h2 id="staff-entry-heading">Staff workspace</h2>
+          <p>Send the selected sample to staff or continue a case in the queue.</p>
+          <div class="actions">
+            <button class="secondary" type="button" data-action="queue-sample">Send to staff queue</button>
+            <button class="secondary" type="button" data-action="open-staff-queue">Open staff queue</button>
+            <button class="secondary" type="button" data-action="open-demo-data">Local demo data</button>
+          </div>
+        </section>
+      </section>
+
+      <section data-screen="staff-queue" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Staff queue</h1>
+          <p>Open a sample case to check its quotation or continue the owner handoff.</p>
+        </div>
+        <dl class="pilot-stats" id="pilot-stats" aria-label="Sample pilot totals"></dl>
+        <div class="pilot-queue" id="pilot-queue" aria-label="Cases"></div>
+        <p class="report-status queue-message" id="pilot-queue-message" role="status"></p>
+        <div class="actions">
+          <button class="secondary" type="button" data-action="choose-sample">Back to samples</button>
+        </div>
+      </section>
+
+      <section data-screen="verify" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Check the original</h1>
+          <p>In the staff role, check what can be read directly from the workshop quotation.</p>
+        </div>
+        <div class="verification-grid">
+          <article class="card quote">
+            <h2>Original quotation</h2>
+            <p class="quote-channel" id="quote-issuer"></p>
+            <blockquote id="source-quote"></blockquote>
+          </article>
+          <article class="card">
+            <h2>Details to verify</h2>
+            <dl class="data-list" id="verification-details"></dl>
+          </article>
+        </div>
+        <form id="verification-form">
+          <div class="card form-fields workshop-check">
+            <label>Independent directory example
+              <select name="directoryResult">
+                <option value="">Choose a sample result</option>
+                <option value="matching">Workshop name and contact match</option>
+                <option value="different">The contact differs</option>
+                <option value="missing">No usable directory listing</option>
+              </select>
+            </label>
+            <p id="directory-evidence" aria-live="polite"></p>
+          </div>
+          <label class="check">
+            <input id="staff-check" type="checkbox" required>
+            <span>I’ve checked these details against the original quotation.</span>
+          </label>
+          <div class="actions">
+            <button class="primary" type="submit">Confirm staff check <span aria-hidden="true">→</span></button>
+            <button class="secondary" type="button" data-action="choose-sample">Back to samples</button>
+          </div>
+        </form>
+      </section>
+
+      <section data-screen="owner" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Confirm your vehicle</h1>
+          <p>In the owner role, confirm or correct what you know about the car and the repair.</p>
+        </div>
+        <form id="owner-form">
+          <div class="card form-fields">
+            <div class="field-pair">
+              <label>Model <input name="model" required maxlength="60" value="Perodua Myvi"></label>
+              <label>Year <input name="year" required pattern="[0-9]{4}" inputmode="numeric" maxlength="4" value="2018"></label>
+            </div>
+            <label>Variant <span class="optional">Optional</span><input name="variant" maxlength="60"></label>
+            <label>What did you notice? <span class="optional">Optional</span>
+              <textarea name="symptoms" rows="3" maxlength="240">Front brakes squeal during braking.</textarea>
+            </label>
+          </div>
+          <div class="actions">
+            <button class="primary" type="submit">See quotation review <span aria-hidden="true">→</span></button>
+            <button class="secondary" type="button" data-action="review-source">Back to staff check</button>
+          </div>
+        </form>
+      </section>
+
+      <section data-screen="review" hidden>
+        <div class="screen-heading">
+          <h1 id="review-heading" tabindex="-1">Quotation review</h1>
+          <p id="review-context"></p>
+        </div>
+        <div class="amount-panel">
+          <div><span class="amount-label">WORKSHOP QUOTED TOTAL</span><strong id="review-total"></strong></div>
+          <div><p id="review-work"></p><p class="amount-note">One combined amount for parts and labour.</p></div>
+        </div>
+        <div class="notice" id="partial-notice" hidden>Staff could verify the work and total. Ask the workshop to clarify the unreadable detail.</div>
+        <section class="card evidence-card" id="review-identity" hidden>
+          <h2>Workshop check for Quote A</h2>
+          <p id="review-identity-result"></p>
+          <p id="review-identity-source"></p>
+          <p>Identity and contact only.</p>
+        </section>
+        <div class="card review-details">
+          <h2 id="review-details-heading">Details to clarify</h2>
+          <dl class="data-list" id="review-details"></dl>
+        </div>
+        <section class="card comparison-details" id="clarification-record" aria-labelledby="clarification-changes-heading" hidden>
+          <h2 id="clarification-changes-heading">What changed after the workshop reply</h2>
+          <table aria-labelledby="clarification-changes-heading">
+            <thead>
+              <tr><th scope="col">Detail</th><th scope="col">Original quote</th><th scope="col">Workshop reply</th></tr>
+            </thead>
+            <tbody id="clarification-changes"></tbody>
+          </table>
+          <details class="clarification-sources">
+            <summary>View original quote and workshop reply</summary>
+            <h3>Original Quote A</h3>
+            <blockquote id="clarification-original"></blockquote>
+            <h3>Workshop reply</h3>
+            <blockquote id="clarification-reply"></blockquote>
+          </details>
+        </section>
+        <div class="card compare-invitation">
+          <div>
+            <h2>Have another quotation?</h2>
+            <p>Compare quotes for the same vehicle and repair.</p>
+          </div>
+          <button class="secondary" type="button" data-action="start-comparison">Add a second quotation <span aria-hidden="true">→</span></button>
+        </div>
+        <div class="card questions">
+          <h2>Questions for the workshop</h2>
+          <ol id="review-questions"></ol>
+          <button class="secondary" type="button" data-action="copy">Copy questions</button>
+          <p class="copy-status" id="copy-status" role="status"></p>
+          <textarea id="copy-fallback" aria-label="Questions to copy" rows="5" readonly hidden></textarea>
+        </div>
+        <div class="card compare-invitation" id="clarification-invitation">
+          <div>
+            <h2>Heard back from the workshop?</h2>
+            <p>Add a checked sample reply to update the review.</p>
+          </div>
+          <button class="secondary" type="button" data-action="start-clarification">Add workshop reply <span aria-hidden="true">→</span></button>
+        </div>
+        <div class="card compare-invitation">
+          <div>
+            <h2>Need more help?</h2>
+            <p>See example expert review and workshop-match options.</p>
+          </div>
+          <button class="secondary" type="button" data-action="open-services">View service examples</button>
+        </div>
+        <div data-report-slot>
+          <section class="card report-controls" id="report-controls" aria-labelledby="keep-review-heading">
+            <h2 id="keep-review-heading">Keep this review</h2>
+            <p>Save one review in this browser or download a text copy.</p>
+            <div class="actions">
+              <button class="primary" id="save-report" type="button" data-action="save-report">Save review</button>
+              <button class="secondary" type="button" data-action="export-report">Export review <span aria-hidden="true">↓</span></button>
+              <button class="secondary" type="button" data-action="open-saved" hidden>Open saved review</button>
+            </div>
+            <p class="report-status" id="report-status" role="status"></p>
+          </section>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="edit-vehicle-action" type="button" data-action="edit-vehicle">Back to vehicle details</button>
+        </div>
+      </section>
+
+      <section data-screen="clarification" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Add a workshop reply</h1>
+          <p>In the staff role, check that the reply relates to the original repair quotation.</p>
+        </div>
+        <div class="verification-grid">
+          <article class="card quote">
+            <h2>Original Quote A</h2>
+            <p class="quote-channel">Fictional workshop quotation</p>
+            <blockquote id="original-for-clarification"></blockquote>
+          </article>
+          <article class="card quote">
+            <h2>Workshop reply</h2>
+            <p class="quote-channel">Fictional follow-up for Quote A</p>
+            <blockquote id="reply-to-check"></blockquote>
+          </article>
+        </div>
+        <form id="clarification-form">
+          <label class="check">
+            <input name="replyVerified" type="checkbox" required>
+            <span>I’ve checked that this reply applies to Quote A.</span>
+          </label>
+          <div class="actions">
+            <button class="primary" type="submit">Apply clarification <span aria-hidden="true">→</span></button>
+            <button class="secondary" type="button" data-action="return-review">Back to quotation review</button>
+          </div>
+        </form>
+      </section>
+
+      <section data-screen="second-quote" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Add a second quotation</h1>
+          <p>Check that this sample quote is for the same vehicle and proposed repair before you compare.</p>
+        </div>
+        <article class="card quote">
+          <h2>Quote B</h2>
+          <p class="quote-channel">Fictional workshop quotation</p>
+          <blockquote id="second-source"></blockquote>
+        </article>
+        <form id="comparison-form">
+          <label class="check">
+            <input name="sameVehicle" type="checkbox" required>
+            <span>Same vehicle <strong id="comparison-vehicle"></strong></span>
+          </label>
+          <label class="check">
+            <input name="sameRepair" type="checkbox" required>
+            <span>Same proposed repair <strong>Front brake pad replacement</strong></span>
+          </label>
+          <div class="actions">
+            <button class="primary" type="submit">Compare quotations <span aria-hidden="true">→</span></button>
+            <button class="secondary" type="button" data-action="return-review">Back to quotation review</button>
+          </div>
+        </form>
+      </section>
+
+      <section data-screen="comparison" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Compare quotations</h1>
+          <p id="comparison-context"></p>
+        </div>
+        <div class="comparison-totals">
+          <article class="comparison-total">
+            <h2>Quote A</h2>
+            <strong id="comparison-total-a"></strong>
+          </article>
+          <article class="comparison-total">
+            <h2>Quote B</h2>
+            <strong id="comparison-total-b"></strong>
+          </article>
+        </div>
+        <p class="itemised-check" id="itemised-check" hidden></p>
+        <div class="notice">
+          <strong>Confirm the scope before comparing prices.</strong>
+          <p>Check which parts, work and warranty each price includes before deciding.</p>
+        </div>
+        <div class="card comparison-details">
+          <h2>Work, charges and warranty</h2>
+          <table aria-label="Work, charges and warranty across quotes">
+            <thead>
+              <tr><th scope="col">Detail</th><th scope="col">Quote A</th><th scope="col">Quote B</th></tr>
+            </thead>
+            <tbody id="comparison-rows"></tbody>
+          </table>
+        </div>
+        <div class="card questions">
+          <h2>Questions for the workshops</h2>
+          <ul id="comparison-questions"></ul>
+        </div>
+        <div class="verification-grid comparison-sources">
+          <article class="card quote">
+            <h2>Original Quote A</h2>
+            <blockquote id="comparison-source-a"></blockquote>
+            <div class="clarification-sources" id="comparison-reply" hidden>
+              <h3>Workshop reply for Quote A</h3>
+              <blockquote id="comparison-reply-text"></blockquote>
+            </div>
+          </article>
+          <article class="card quote">
+            <h2>Original Quote B</h2>
+            <blockquote id="comparison-source-b"></blockquote>
+          </article>
+        </div>
+        <div data-report-slot></div>
+        <div class="actions">
+          <button class="primary" type="button" data-action="return-review">Back to quotation review</button>
+          <button class="secondary" type="button" data-action="edit-comparison">Back to Quote B</button>
+        </div>
+      </section>
+
+      <section data-screen="replace" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">A clearer copy is needed</h1>
+          <p>Staff need to read the proposed work and quoted total before preparing a review.</p>
+        </div>
+        <div class="card replace-card">
+          <h2>What staff couldn’t verify</h2>
+          <ul id="replacement-details"></ul>
+          <p>Ask the workshop for a fresh screenshot or PDF with both details visible.</p>
+        </div>
+        <div class="actions">
+          <button class="primary" type="button" data-action="replace">Use the clearer sample <span aria-hidden="true">→</span></button>
+          <button class="secondary" type="button" data-action="choose-sample">Back to samples</button>
+        </div>
+      </section>
+
+      <section data-screen="staff-delivery" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Staff delivery</h1>
+          <p>Record a sample handoff to the owner and see which report was delivered.</p>
+        </div>
+        <section class="card delivery-draft" id="delivery-draft" aria-labelledby="delivery-draft-heading" hidden>
+          <h2 id="delivery-draft-heading">Review to deliver</h2>
+          <p id="delivery-draft-title"></p>
+          <form id="delivery-form" class="form-fields">
+            <label>
+              Staff handling time in minutes
+              <input name="handlingMinutes" type="number" min="1" step="1" inputmode="numeric" required>
+            </label>
+            <div class="actions">
+              <button class="primary" type="submit">Record sample delivery</button>
+            </div>
+          </form>
+        </section>
+        <p class="report-status" id="delivery-status" role="status" tabindex="-1"></p>
+        <div class="pilot-queue delivery-records" id="delivery-records" aria-label="Recorded deliveries"></div>
+        <div class="actions">
+          <button class="secondary" type="button" data-action="back-from-delivery">Back to review</button>
+        </div>
+      </section>
+
+      <section data-screen="services" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Service examples</h1>
+          <p>Explore the optional offers for this fictional case.</p>
+        </div>
+        <div class="card service-card">
+          <h2>Independent mechanic review</h2>
+          <p class="service-price" id="expert-price"></p>
+          <ul>
+            <li>A qualified independent mechanic would explain the quotation and what inspection evidence to request.</li>
+            <li>Includes the standard review, written guidance and one follow-up question. Inspection findings require a qualified inspection.</li>
+            <li>Example turnaround is one business day after a readable quotation is received.</li>
+          </ul>
+          <p id="expert-fee"></p>
+          <p>Reviewer availability for this example is unconfirmed.</p>
+        </div>
+        <section class="card service-card" aria-labelledby="match-heading">
+          <h2 id="match-heading">Request a workshop match</h2>
+          <form id="match-search-form" class="form-fields">
+            <label>Workshop area
+              <select name="area" required>
+                <option value="">Choose an area</option>
+                <option value="kk">Kota Kinabalu</option>
+                <option value="other">Other area</option>
+              </select>
+            </label>
+            <button class="secondary" type="submit">Find a sample match</button>
+          </form>
+          <p id="match-result" role="status"></p>
+          <form id="match-consent-form" hidden>
+            <label class="check">
+              <input type="checkbox" name="consent" required>
+              <span id="match-consent-text"></span>
+            </label>
+            <div class="actions"><button class="primary" type="submit">Record sample permission</button></div>
+          </form>
+          <p id="match-status" class="report-status" role="status"></p>
+          <div class="actions" id="withdraw-match-actions" hidden>
+            <button class="secondary" type="button" data-action="withdraw-match">Withdraw sample permission</button>
+          </div>
+        </section>
+        <div class="actions"><button class="secondary" type="button" data-action="return-review">Back to review</button></div>
+      </section>
+
+      <section data-screen="pilot-records" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Pilot records</h1>
+          <p>Log sample offers, payments, refunds and completed referrals for this case.</p>
+        </div>
+        <section class="card service-card" aria-labelledby="standard-heading">
+          <h2 id="standard-heading">Standard review offer</h2>
+          <p id="standard-price"></p>
+          <div class="actions">
+            <button class="secondary" id="offer-action" type="button" data-action="record-offer">Record offer shown</button>
+            <button class="secondary" id="pay-action" type="button" data-action="record-payment" hidden>Record sample payment</button>
+            <button class="secondary" id="decline-action" type="button" data-action="record-decline" hidden>Record decline</button>
+            <button class="secondary" id="refund-action" type="button" data-action="record-refund" hidden>Record sample refund</button>
+          </div>
+        </section>
+        <section class="card service-card" aria-labelledby="referral-heading">
+          <h2 id="referral-heading">Completed workshop referral</h2>
+          <p id="referral-eligibility"></p>
+          <form id="referral-form" class="form-fields" hidden>
+            <label>Sample paid job reference <input name="jobRef" required maxlength="36" placeholder="DEMO-001"></label>
+            <label>Paid job value (RM) <input name="amount" type="number" min="300" step="0.01" inputmode="decimal" required></label>
+            <label class="check">
+              <input type="checkbox" name="completedPaid" required>
+              <span>The matched workshop completed the job and received payment.</span>
+            </label>
+            <button class="primary" type="submit">Record sample referral</button>
+          </form>
+        </section>
+        <section class="card service-card" aria-labelledby="activity-heading">
+          <h2 id="activity-heading">Case activity</h2>
+          <ol class="pilot-history" id="pilot-activity"></ol>
+        </section>
+        <div class="actions"><button class="secondary" type="button" data-action="back-from-pilot-records">Back to case</button></div>
+      </section>
+
+      <section data-screen="demo-data" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Local demo data</h1>
+          <p>Use fictional details. The staff queue, sample permissions and saved review stay in this browser.</p>
+        </div>
+        <form class="card service-card" id="clear-data-form">
+          <h2>Clear Mekaneed sample data</h2>
+          <p>This removes the sample cases and saved review from this browser.</p>
+          <label class="check">
+            <input type="checkbox" name="confirmClear" required>
+            <span>I want to clear the local sample cases and saved review.</span>
+          </label>
+          <div class="actions"><button class="secondary" type="submit">Clear sample data</button></div>
+          <p class="report-status" id="clear-data-status" role="status"></p>
+        </form>
+        <div class="actions"><button class="secondary" type="button" data-action="choose-sample">Back to samples</button></div>
+      </section>
+
+      <section data-screen="saved-report" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Saved review</h1>
+          <p>Saved in this browser.</p>
+        </div>
+        <div class="card saved-report">
+          <h2 id="saved-report-title"></h2>
+          <pre id="saved-report-text"></pre>
+        </div>
+        <div class="actions">
+          <button class="primary" type="button" data-action="export-saved">Export saved review <span aria-hidden="true">↓</span></button>
+          <button class="secondary" type="button" data-action="back-from-saved">Back</button>
+        </div>
+      </section>
+
+      <noscript>Enable JavaScript to use this sample quotation review.</noscript>
+    </div>
+  </main>
+</body>
+</html>
