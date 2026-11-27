@@ -4,6 +4,9 @@
   "installCommand": "",
   "buildCommand": "node build.mjs",
   "outputDirectory": "dist",
+  "git": {
+    "deploymentEnabled": false
+  },
   "headers": [
     {
       "source": "/(.*)\\.mjs",

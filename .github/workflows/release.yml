@@ -1,0 +1,128 @@
+name: Release and deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mekaneed-production
+  queue: max
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  NODE_VERSION: '22'
+  VERCEL_CLI_VERSION: '67.0.0'
+
+jobs:
+  check:
+    name: Test merged commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - run: node --test *.test.mjs
+      - run: node build.mjs
+
+  release:
+    name: Publish GitHub release
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
+    steps:
+      - name: Publish a release for the tested commit
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v0.1.$GITHUB_RUN_NUMBER"
+          ref="repos/$GITHUB_REPOSITORY/git/ref/tags/$tag"
+          previous_sha="$(gh api "$ref" --jq '.object.sha' 2>/dev/null || true)"
+          if [[ -n "$previous_sha" && "$previous_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::Release tag $tag already points to a different commit."
+            exit 1
+          fi
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "Mekaneed $tag" --generate-notes
+          fi
+          release_sha="$(gh api "$ref" --jq '.object.sha')"
+          if [[ "$release_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::Release tag $tag does not point to the tested commit."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy release to Vercel
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://mekaneed-app.vercel.app/
+    steps:
+      - name: Guard against deploying an old rerun
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_RUN_ATTEMPT" != 1 ]]; then
+            main_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+            if [[ "$main_sha" != "$GITHUB_SHA" ]]; then
+              echo "::notice::This rerun was superseded by a newer commit on main."
+              echo "deploy=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.current.outputs.deploy == 'true'
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.current.outputs.deploy == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Build and deploy the released commit
+        if: steps.current.outputs.deploy == 'true'
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          if [[ -z "$VERCEL_TOKEN" || -z "$VERCEL_ORG_ID" || -z "$VERCEL_PROJECT_ID" ]]; then
+            echo "::error::Set VERCEL_TOKEN in the production environment and the two Vercel project variables."
+            exit 1
+          fi
+          vercel=(npx --yes "vercel@$VERCEL_CLI_VERSION")
+          "${vercel[@]}" pull --yes --environment=production --token "$VERCEL_TOKEN"
+          "${vercel[@]}" build --prod --token "$VERCEL_TOKEN"
+          "${vercel[@]}" deploy --prebuilt --prod --token "$VERCEL_TOKEN" \
+            --meta "releaseTag=$RELEASE_TAG" --meta "sourceCommit=$GITHUB_SHA"
+      - name: Verify the public site matches the release
+        if: steps.current.outputs.deploy == 'true'
+        run: |
+          for asset in index.html styles.css app.mjs review.mjs comparison.mjs; do
+            curl --fail --silent --show-error --retry 3 --retry-all-errors --max-time 30 \
+              "https://mekaneed-app.vercel.app/$asset" -o "$RUNNER_TEMP/mekaneed-$asset"
+            cmp "dist/$asset" "$RUNNER_TEMP/mekaneed-$asset"
+          done
