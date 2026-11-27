@@ -4,7 +4,16 @@
   "installCommand": "",
   "buildCommand": "node build.mjs",
   "outputDirectory": "dist",
+  "git": {
+    "deploymentEnabled": false
+  },
   "headers": [
+    {
+      "source": "/release.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
     {
       "source": "/(.*)\\.mjs",
       "headers": [

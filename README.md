@@ -12,11 +12,13 @@ node serve.mjs
 
 Open [the demo](http://127.0.0.1:4173). If port 4173 is in use, add another port number at the end of the command and open the address printed by the server.
 
-## Deploy to Vercel
+## Pull requests, releases and deployment
 
-Import this repository in Vercel with the repository root as the root directory. The settings in `vercel.json` publish the five browser assets in `dist/`. The demo needs no environment variables or backend services.
+Open one pull request to `main` for each feature. Review the changes and record the findings in the pull request, then squash merge it once **Test and build** passes. GitHub Actions tests the resulting commit, publishes a release tagged `v0.1.<run number>`, and deploys that exact commit to [Mekaneed](https://mekaneed-app.vercel.app/). The final step checks the hosted build files and the release marker. If a newer commit is already live when an older release reaches deployment, the pipeline keeps the newer site live.
 
-Run `node build.mjs` to generate the static output locally. The build omits the tests and the local server.
+The workflow uses GitHub repository variables `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`, plus a `VERCEL_TOKEN` secret in the **production** GitHub environment. A Vercel team member should create a token scoped to the deployment team and enter it directly in GitHub. Vercel Git auto-deploys are disabled in `vercel.json` so the release is published first.
+
+Run `node build.mjs` to generate the static output locally. A release deploys those five browser assets and a `release.json` marker with the commit and tag.
 
 ## Try the staff queue
 
