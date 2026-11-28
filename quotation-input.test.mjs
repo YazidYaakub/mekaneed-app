@@ -43,7 +43,8 @@ test('a confirmed comparison keeps both sources, shows work and separate warrant
   const result = compareQuotations(first, second, { sameVehicle: true, sameRepair: true })
   assert.ok(result.rows.some(row => row.first === 'Air-conditioning overhaul' && row.second.endsWith('and filter')))
   assert.ok(result.rows.some(row => row.label === 'Parts warranty' && row.second === '6 months'))
-  assert.ok(result.rows.some(row => row.first.includes('Parts') && row.second === 'Not stated'))
+  assert.ok(result.rows.some(row => row.label === 'Parts' && row.first === 'RM980.00' &&
+    row.second === 'Not stated' && row.note === 'Only listed in Quote A'))
   assert.equal(result.amountChecks[0].calculatedSen, 123000)
   assert.equal(result.amountChecks[0].matches, false)
   assert.deepEqual(result.quotes.map(quote => quote.source), [first.source, second.source])
@@ -61,4 +62,17 @@ test('a workshop reply updates entered details while the exported review retains
   assert.doesNotMatch(report.text, /Fictional demo/)
   assert.ok(report.text.includes(input.source) && report.text.includes(reply.source))
   assert.equal(enterReply({ source: 'Only a message' }).field, 'source')
+})
+
+test('matching line descriptions show both charges without assigning the lump sum to labour', () => {
+  const { quotation: first } = enterQuotation({ ...input, combined: 'on', charges: 'Brake inspection | 30' })
+  const { quotation: second } = enterQuotation({ ...input, charges: 'brake  inspection | 45' })
+  const result = compareQuotations(first, second, { sameVehicle: true, sameRepair: true })
+  assert.ok(result.rows.some(row => row.label === 'Brake inspection' && row.first === 'RM30.00' &&
+    row.second === 'RM45.00' && !row.note))
+  assert.ok(result.rows.some(row => row.label === 'Separate labour charge' && row.first.includes('lump sum')))
+  const review = reviewQuotation(first, 'Workshop reported visible scoring.')
+  assert.ok(review.questions[0].startsWith('How do the inspection findings'))
+  const report = formatReviewReport({ context: { vehicle: '2018 Perodua Myvi' }, quotation: first, review })
+  assert.match(report.text, /Parts and labour: Combined/)
 })

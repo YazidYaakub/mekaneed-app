@@ -82,6 +82,12 @@ for (const slot of document.querySelectorAll('[data-quote-input]')) {
 for (const slot of document.querySelectorAll('[data-detail-inputs]')) {
   slot.replaceWith(document.querySelector('#quote-details-template').content.cloneNode(true))
 }
+for (const hint of document.querySelectorAll('[data-hint-for]')) {
+  const form = hint.closest('form')
+  const field = hint.dataset.hintFor
+  hint.id = `${form.id}-${field}-hint`
+  form.elements.namedItem(field).setAttribute('aria-describedby', hint.id)
+}
 const ownAttachment = connectAttachment(ownQuoteForm)
 const secondAttachment = connectAttachment(ownComparisonForm)
 const verificationForm = document.querySelector('#verification-form')
@@ -141,6 +147,7 @@ let deliveryDraft
 let identityCheck
 let matchArea
 let pilotRecordsReturnScreen
+let acceptedAttachmentUrl
 
 function showScreen(screen) {
   for (const [name, section] of screens) section.hidden = name !== screen
@@ -160,6 +167,7 @@ function showScreen(screen) {
       ? 'Add the vehicle details and any observations you want included in the review.'
       : 'In the owner role, confirm or correct what you know about the car and the repair.'
     ownerForm.querySelector('[data-action="review-source"]').textContent = own ? 'Back to quotation details' : 'Back to staff check'
+    document.querySelector('#workshop-findings-field').hidden = !own
   }
   if (screen === 'verify') {
     directoryResult.disabled = Boolean(currentPilotCase && currentPilotCase.status !== 'in-review')
@@ -334,6 +342,7 @@ function resetOwnCase() {
   ownQuoteForm.reset()
   ownComparisonForm.reset()
   ownReplyForm.reset()
+  acceptedAttachmentUrl = undefined
   if (firstQuote?.ownerEntered) {
     firstQuote = undefined
     context = undefined
@@ -343,7 +352,7 @@ function resetOwnCase() {
     for (const id of [
       'review-source-original', 'review-source-reply', 'review-attachment', 'comparison-attachment-a',
       'comparison-attachment-b', 'comparison-source-a', 'comparison-source-b', 'comparison-reply-text',
-      'review-details', 'review-questions', 'review-context', 'review-total', 'review-work',
+      'review-details', 'review-questions', 'review-context', 'review-findings', 'review-total', 'review-work',
       'review-itemised-check', 'clarification-changes', 'comparison-rows', 'comparison-questions',
       'comparison-context', 'comparison-total-a', 'comparison-total-b', 'itemised-check', 'own-comparison-context',
     ]) document.getElementById(id).replaceChildren()
@@ -352,19 +361,28 @@ function resetOwnCase() {
   }
 }
 
+function unconfirmComparison() {
+  for (const name of ['sameVehicle', 'sameRepair']) ownComparisonForm.elements.namedItem(name).checked = false
+}
+
+ownComparisonForm.addEventListener('input', event => {
+  if (event.target.type !== 'checkbox' || event.target.name === 'combined') unconfirmComparison()
+})
+
 ownQuoteForm.addEventListener('submit', event => {
   event.preventDefault()
   const result = enterQuotation(ownFormValues(ownQuoteForm))
   if (result.error) return showInputError(ownQuoteForm, result)
   const { clarification, ...previous } = firstQuote ?? {}
-  const changed = JSON.stringify(previous) !== JSON.stringify(result.quotation)
+  const changed = acceptedAttachmentUrl !== ownAttachment.current?.url ||
+    JSON.stringify(previous) !== JSON.stringify(result.quotation)
   if (changed) {
     ownComparisonForm.reset()
     ownReplyForm.reset()
     comparison = undefined
   }
+  acceptedAttachmentUrl = ownAttachment.current?.url
   firstQuote = changed || !clarification ? result.quotation : { ...result.quotation, clarification }
-  review = reviewQuotation(firstQuote)
   showScreen('owner')
 })
 
@@ -405,17 +423,18 @@ ownerForm.addEventListener('submit', event => {
     return
   }
   const owner = { year: form.get('year'), model, variant: form.get('variant').trim(), symptoms: form.get('symptoms').trim() }
+  if (firstQuote.ownerEntered) owner.workshopFindings = form.get('workshopFindings').trim()
   if (!changeCurrentPilotCase({ type: 'confirm-owner', context: owner })) return
   const previousVehicle = context?.vehicle
   loadOwnerContext(owner)
   if (firstQuote.ownerEntered && context.vehicle !== previousVehicle) {
-    ownComparisonForm.elements.namedItem('sameVehicle').checked = false
+    unconfirmComparison()
   }
   showReview()
 })
 
-function loadOwnerContext({ year, model, variant, symptoms }) {
-  context = { vehicle: [year, model, variant].filter(Boolean).join(' '), symptoms }
+function loadOwnerContext({ year, model, variant, symptoms, workshopFindings }) {
+  context = { vehicle: [year, model, variant].filter(Boolean).join(' '), symptoms, workshopFindings }
 }
 
 ownerForm.elements.namedItem('model').addEventListener('input', event => {
@@ -423,9 +442,13 @@ ownerForm.elements.namedItem('model').addEventListener('input', event => {
 })
 
 function showReview() {
-  const { vehicle, symptoms } = context
+  const { vehicle, symptoms, workshopFindings } = context
   const clarification = firstQuote.clarification
+  review = reviewQuotation(firstQuote, workshopFindings)
   document.querySelector('#review-context').textContent = [vehicle, symptoms].filter(Boolean).join(' · ')
+  const findings = document.querySelector('#review-findings')
+  findings.hidden = !workshopFindings
+  findings.textContent = workshopFindings ? 'Workshop reported: ' + workshopFindings : ''
   document.querySelector('#review-heading').textContent = review.title
   document.querySelector('#review-total').textContent = review.total
   document.querySelector('#review-work').textContent = review.work
@@ -434,6 +457,8 @@ function showReview() {
   document.querySelector('#review-source').open = false
   document.querySelector('#review-source-summary').textContent = clarification
     ? 'View original quotation and reply' : 'View original quotation'
+  document.querySelector('#review-quote-label').textContent = firstQuote.ownerEntered
+    ? 'Quote A · Entered wording' : 'Original Quote A'
   document.querySelector('#review-source-original').textContent = firstQuote.source
   renderAttachment(document.querySelector('#review-attachment'), firstQuote.ownerEntered ? ownAttachment.current : null)
   document.querySelector('#review-source-clarification').hidden = !clarification
@@ -496,7 +521,6 @@ clarificationForm.addEventListener('submit', event => {
   if (revised === firstQuote) return
   if (!changeCurrentPilotCase({ type: 'clarify' })) return
   firstQuote = revised
-  review = reviewQuotation(revised)
   showReview()
 })
 
@@ -506,7 +530,6 @@ ownReplyForm.addEventListener('submit', event => {
   const result = enterReply(input)
   if (result.error) return showInputError(ownReplyForm, result)
   firstQuote = applyClarification(firstQuote, result.reply, input.replyVerified === 'on')
-  review = reviewQuotation(firstQuote)
   ownReplyForm.reset()
   showReview()
 })
@@ -572,6 +595,10 @@ function showComparison(otherQuote, confirmed) {
   renderAmountChecks('itemised-check', result.amountChecks)
   document.querySelector('#comparison-source-a').textContent = a.source
   document.querySelector('#comparison-source-b').textContent = b.source
+  document.querySelector('#comparison-quote-label-a').textContent = firstQuote.ownerEntered
+    ? 'Quote A · Entered wording' : 'Original Quote A'
+  document.querySelector('#comparison-quote-label-b').textContent = firstQuote.ownerEntered
+    ? 'Quote B · Entered wording' : 'Original Quote B'
   renderAttachment(document.querySelector('#comparison-attachment-a'), firstQuote.ownerEntered ? ownAttachment.current : null)
   renderAttachment(document.querySelector('#comparison-attachment-b'), firstQuote.ownerEntered ? secondAttachment.current : null)
   document.querySelector('#comparison-reply').hidden = !firstQuote.clarification
@@ -643,10 +670,14 @@ function openSavedReport() {
     return
   }
   savedReturnScreen = activeScreen
-  openedSavedReport = saved
-  document.querySelector('#saved-report-title').textContent = saved.title
-  document.querySelector('#saved-report-text').textContent = saved.text
+  renderSavedReport(saved)
   showScreen('saved-report')
+}
+
+function renderSavedReport(saved) {
+  openedSavedReport = saved
+  document.querySelector('#saved-report-title').textContent = saved?.title ?? ''
+  document.querySelector('#saved-report-text').textContent = saved?.text ?? ''
 }
 
 function downloadReport(report) {
@@ -812,9 +843,7 @@ clearDataForm.addEventListener('submit', event => {
   try {
     clearDemoData(window.localStorage)
     resetOwnCase()
-    openedSavedReport = undefined
-    document.querySelector('#saved-report-text').textContent = ''
-    document.querySelector('#saved-report-title').textContent = ''
+    renderSavedReport(null)
     updateSavedReviewControls(null)
     clearDataForm.reset()
     status.textContent = 'Mekaneed data cleared from this browser.'
@@ -1005,7 +1034,6 @@ function openPilotCase(id) {
     loadOwnerContext(owner)
     if (currentPilotCase.replyApplied) {
       firstQuote = applyClarification(firstQuote, sampleReply, true)
-      review = reviewQuotation(firstQuote)
     }
     showReview()
   } else if (currentPilotCase.status === 'awaiting-owner') {
@@ -1065,7 +1093,11 @@ const actions = {
   'start-clarification': startClarification,
   'start-comparison': startComparison,
   'return-review': showReview,
-  'edit-comparison': () => showScreen(firstQuote.ownerEntered ? 'own-second-quote' : 'second-quote'),
+  'edit-comparison': () => {
+    if (!firstQuote.ownerEntered) return showScreen('second-quote')
+    unconfirmComparison()
+    showScreen('own-second-quote')
+  },
   'save-report': saveActiveReport,
   'open-saved': openSavedReport,
   'export-report': () => downloadReport(activeReport()),
@@ -1088,6 +1120,11 @@ for (const button of document.querySelectorAll('[data-action]')) {
 }
 updateSavedReviewControls(getSavedReview())
 window.addEventListener('storage', () => {
-  updateSavedReviewControls(getSavedReview())
+  const saved = getSavedReview()
+  updateSavedReviewControls(saved)
+  if (activeScreen === 'saved-report') {
+    renderSavedReport(saved)
+    if (!saved) showScreen(savedReturnScreen)
+  }
   if (activeScreen === 'staff-queue') renderStaffQueue()
 })

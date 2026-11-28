@@ -122,12 +122,12 @@
           <label>Attach a photo or PDF <span class="optional">Optional</span>
             <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
           </label>
-          <p class="field-hint">JPG, PNG, WebP or PDF, up to 10 MB. The attachment stays in this tab.</p>
+          <p class="field-hint" data-hint-for="attachment">JPG, PNG, WebP or PDF, up to 10 MB. The attachment stays in this tab.</p>
           <div class="attachment-preview" data-attachment-preview aria-live="polite"></div>
           <label>Quotation text
             <textarea name="source" rows="4" maxlength="6000" required></textarea>
           </label>
-          <p class="field-hint">Paste the message or transcribe the work, charges and relevant terms from the attachment.</p>
+          <p class="field-hint" data-hint-for="source">Paste the message or transcribe the work, charges and relevant terms from the attachment.</p>
           <div class="field-pair quote-fields">
             <label>Proposed work <input name="work" maxlength="180" required placeholder="e.g. Replace front brake pads"></label>
             <label>Quoted total (RM) <input name="total" inputmode="decimal" maxlength="18" required placeholder="e.g. 450.00"></label>
@@ -143,7 +143,7 @@
               <label>Itemised charges <span class="optional">Optional</span>
                 <textarea name="charges" rows="3" maxlength="1500" placeholder="Brake pads | 330&#10;Labour | 120"></textarea>
               </label>
-              <p class="field-hint">For an arithmetic check, enter every charge on its own line as Description | amount. Use a minus sign for discounts.</p>
+              <p class="field-hint" data-hint-for="charges">For an arithmetic check, enter every charge on its own line as Description | amount. Use a minus sign for discounts.</p>
             </div>
           </details>
         </div>
@@ -228,6 +228,9 @@
             <label>What did you notice? <span class="optional">Optional</span>
               <textarea name="symptoms" rows="3" maxlength="240">Front brakes squeal during braking.</textarea>
             </label>
+            <label id="workshop-findings-field" hidden>What did the workshop report finding? <span class="optional">Optional</span>
+              <textarea name="workshopFindings" rows="3" maxlength="240"></textarea>
+            </label>
           </div>
           <div class="actions">
             <button class="primary" type="submit">See quotation review <span aria-hidden="true">→</span></button>
@@ -240,6 +243,7 @@
         <div class="screen-heading">
           <h1 id="review-heading" tabindex="-1">Quotation review</h1>
           <p id="review-context"></p>
+          <p id="review-findings" hidden></p>
         </div>
         <div class="amount-panel">
           <div><span class="amount-label">WORKSHOP QUOTED TOTAL</span><strong id="review-total"></strong></div>
@@ -248,7 +252,7 @@
         <p class="itemised-check" id="review-itemised-check" hidden></p>
         <details class="card clarification-sources" id="review-source">
           <summary id="review-source-summary">View original quotation</summary>
-          <h2>Original Quote A</h2>
+          <h2 id="review-quote-label">Original Quote A</h2>
           <blockquote id="review-source-original"></blockquote>
           <div class="attachment-preview" id="review-attachment"></div>
           <div id="review-source-clarification" hidden>
@@ -440,7 +444,7 @@
         <p class="itemised-check" id="itemised-check" hidden></p>
         <div class="notice">
           <strong>Confirm the scope before comparing prices.</strong>
-          <p>Check which parts, work and warranty each price includes before deciding.</p>
+          <p>Check which parts, work and warranty each price includes before deciding. Similar line-item names can refer to different parts.</p>
         </div>
         <div class="card comparison-details">
           <h2>Work, charges and warranty</h2>
@@ -460,7 +464,7 @@
         </div>
         <div class="verification-grid comparison-sources">
           <article class="card quote">
-            <h2>Original Quote A</h2>
+            <h2 id="comparison-quote-label-a">Original Quote A</h2>
             <blockquote id="comparison-source-a"></blockquote>
             <div class="attachment-preview" id="comparison-attachment-a"></div>
             <div class="clarification-sources" id="comparison-reply" hidden>
@@ -469,7 +473,7 @@
             </div>
           </article>
           <article class="card quote">
-            <h2>Original Quote B</h2>
+            <h2 id="comparison-quote-label-b">Original Quote B</h2>
             <blockquote id="comparison-source-b"></blockquote>
             <div class="attachment-preview" id="comparison-attachment-b"></div>
           </article>

@@ -50,6 +50,7 @@ export function enterQuotation(input) {
       total: { value: formatSen(statedSen) },
       statedSen,
       chargesSen: charges.map(charge => charge.sen),
+      lineItems: charges,
       combinedPartsAndLabour: input.combined === 'on',
       details,
     },

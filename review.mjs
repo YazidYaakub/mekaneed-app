@@ -28,7 +28,7 @@ export function applyClarification(quotation, reply, verified) {
   return { ...quotation, clarification: reply }
 }
 
-export function reviewQuotation(quotation) {
+export function reviewQuotation(quotation, workshopFindings = '') {
   const work = quotation.work?.value
   const total = quotation.total?.value
   const unresolved = []
@@ -37,7 +37,9 @@ export function reviewQuotation(quotation) {
   if (unresolved.length) return { outcome: 'clearer-copy', unresolved }
 
   const questions = [quotation.ownerEntered
-    ? `What did you find during the inspection that led to this recommendation: ${work}?`
+    ? workshopFindings
+      ? `How do the inspection findings support the proposed work: ${work}?`
+      : `What did you find during the inspection that led to this recommendation: ${work}?`
     : 'What did you find during the brake inspection?']
   const fields = quotation.ownerEntered ? enteredReviewFields : reviewFields
   const details = fields.map(([key, name, question]) => {
@@ -85,6 +87,7 @@ export function formatReviewReport({ context, quotation, review, comparison, ide
     `Vehicle: ${context.vehicle}`,
   ]
   if (context.symptoms) lines.push(`Owner notes: ${context.symptoms}`)
+  if (context.workshopFindings) lines.push(`Workshop findings as entered: ${context.workshopFindings}`)
   lines.push(`Proposed work: ${review.work}`)
   if (comparison) {
     const [first, second] = comparison.quotes
@@ -106,6 +109,7 @@ export function formatReviewReport({ context, quotation, review, comparison, ide
   } else {
     lines.push(
       `Quoted total: ${review.total}`,
+      ...(quotation.ownerEntered && quotation.combinedPartsAndLabour ? ['Parts and labour: Combined in the quoted total.'] : []),
       '',
       'QUOTATION DETAILS',
       ...review.details.map(detail => `${detail.name}: ${detail.display}`),
