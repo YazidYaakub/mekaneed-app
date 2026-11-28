@@ -135,6 +135,7 @@ function showScreen(screen) {
   renderPilotCaseBar()
   document.querySelector('#pilot-case-message').textContent = ''
   document.querySelector('#edit-vehicle-action').hidden = currentPilotCase?.status === 'delivered'
+  document.querySelector('#try-another-sample').hidden = Boolean(currentPilotCase)
   if (screen === 'verify') {
     directoryResult.disabled = Boolean(currentPilotCase && currentPilotCase.status !== 'in-review')
     renderDirectoryEvidence()
@@ -267,6 +268,12 @@ function showReview() {
   document.querySelector('#review-heading').textContent = review.title
   document.querySelector('#review-total').textContent = review.total
   document.querySelector('#review-work').textContent = review.work
+  document.querySelector('#review-source').open = false
+  document.querySelector('#review-source-summary').textContent = clarification
+    ? 'View original quotation and reply' : 'View original quotation'
+  document.querySelector('#review-source-original').textContent = firstQuote.source
+  document.querySelector('#review-source-clarification').hidden = !clarification
+  document.querySelector('#review-source-reply').textContent = clarification?.source ?? ''
   document.querySelector('#partial-notice').hidden = review.outcome !== 'partial'
   document.querySelector('#review-identity').hidden = !identityCheck
   if (identityCheck) {
@@ -278,8 +285,6 @@ function showReview() {
   document.querySelector('#clarification-invitation').hidden = Boolean(clarification)
   document.querySelector('#clarification-record').hidden = !clarification
   if (clarification) {
-    document.querySelector('#clarification-original').textContent = firstQuote.source
-    document.querySelector('#clarification-reply').textContent = clarification.source
     const changes = review.details.filter(detail => detail.previous !== undefined)
     renderTableRows('clarification-changes', changes.map(({ name, previous, display }) => ({
       label: name, first: previous, second: display,
@@ -794,6 +799,11 @@ function openPilotCase(id) {
 const actions = {
   'choose-sample': () => {
     leavePilotCase()
+    showScreen('sample')
+  },
+  'try-another-sample': () => {
+    sampleForm.reset()
+    ownerForm.reset()
     showScreen('sample')
   },
   'queue-sample': queueSample,
