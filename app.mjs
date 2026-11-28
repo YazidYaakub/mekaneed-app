@@ -4,6 +4,7 @@ import {
   recordWorkshopCheck, reviewQuotation, sampleWorkshopMatch, savePilotCase, saveReview, summarizePilotCases,
 } from './review.mjs'
 import { compareQuotations } from './comparison.mjs'
+import { enterQuotation, enterReply } from './quotation-input.mjs'
 
 const message = 'Front brake pads and labour RM450'
 const work = { value: 'Front brake pads and labour' }
@@ -72,6 +73,17 @@ const sampleReply = {
 }
 
 const sampleForm = document.querySelector('#sample-form')
+const ownQuoteForm = document.querySelector('#own-quote-form')
+const ownComparisonForm = document.querySelector('#own-comparison-form')
+const ownReplyForm = document.querySelector('#own-reply-form')
+for (const slot of document.querySelectorAll('[data-quote-input]')) {
+  slot.replaceWith(document.querySelector('#quote-input-template').content.cloneNode(true))
+}
+for (const slot of document.querySelectorAll('[data-detail-inputs]')) {
+  slot.replaceWith(document.querySelector('#quote-details-template').content.cloneNode(true))
+}
+const ownAttachment = connectAttachment(ownQuoteForm)
+const secondAttachment = connectAttachment(ownComparisonForm)
 const verificationForm = document.querySelector('#verification-form')
 const ownerForm = document.querySelector('#owner-form')
 const comparisonForm = document.querySelector('#comparison-form')
@@ -85,6 +97,9 @@ const reportControls = document.querySelector('#report-controls')
 const reportStatus = document.querySelector('#report-status')
 const steps = ['sample', 'verify', 'owner', 'review']
 const branchSteps = {
+  'own-quote': 'verify',
+  'own-second-quote': 'review',
+  'own-reply': 'review',
   replace: 'verify',
   clarification: 'review',
   'second-quote': 'review',
@@ -136,6 +151,16 @@ function showScreen(screen) {
   document.querySelector('#pilot-case-message').textContent = ''
   document.querySelector('#edit-vehicle-action').hidden = currentPilotCase?.status === 'delivered'
   document.querySelector('#try-another-sample').hidden = Boolean(currentPilotCase)
+  document.querySelector('#try-another-sample').textContent = firstQuote?.ownerEntered ? 'Start another review' : 'Try another sample'
+  document.querySelector('#quote-step-label').textContent = screen === 'own-quote' || firstQuote?.ownerEntered || screen === 'sample'
+    ? 'Check details' : 'Staff check'
+  if (screen === 'owner') {
+    const own = Boolean(firstQuote.ownerEntered)
+    document.querySelector('#owner-intro').textContent = own
+      ? 'Add the vehicle details and any observations you want included in the review.'
+      : 'In the owner role, confirm or correct what you know about the car and the repair.'
+    ownerForm.querySelector('[data-action="review-source"]').textContent = own ? 'Back to quotation details' : 'Back to staff check'
+  }
   if (screen === 'verify') {
     directoryResult.disabled = Boolean(currentPilotCase && currentPilotCase.status !== 'in-review')
     renderDirectoryEvidence()
@@ -211,6 +236,138 @@ function clearCopyStatus() {
   fallback.value = ''
 }
 
+function renderAttachment(container, attachment) {
+  container.replaceChildren()
+  if (!attachment) return
+  if (attachment.kind !== 'pdf') {
+    const image = document.createElement('img')
+    image.src = attachment.url
+    image.alt = 'Attached quotation photo'
+    container.append(image)
+  }
+  const link = document.createElement('a')
+  link.href = attachment.url
+  link.download = 'quotation.' + attachment.kind
+  link.textContent = attachment.kind === 'pdf' ? 'Download attached PDF to view it' : 'Download original photo'
+  container.append(link)
+}
+
+function attachmentType(bytes) {
+  const has = (signature, offset = 0) => signature.every((byte, index) => bytes[offset + index] === byte)
+  if (has([0xff, 0xd8, 0xff])) return ['jpg', 'image/jpeg']
+  if (has([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return ['png', 'image/png']
+  if (has([82, 73, 70, 70]) && has([87, 69, 66, 80], 8)) return ['webp', 'image/webp']
+  if (has([37, 80, 68, 70, 45])) return ['pdf', 'application/pdf']
+  return []
+}
+
+function connectAttachment(form) {
+  const input = form.elements.namedItem('attachment')
+  const preview = form.querySelector('[data-attachment-preview]')
+  let attachment
+  let version = 0
+  const clear = () => {
+    version += 1
+    if (attachment) URL.revokeObjectURL(attachment.url)
+    attachment = undefined
+    input.setCustomValidity('')
+    renderAttachment(preview)
+  }
+  input.addEventListener('change', async () => {
+    clear()
+    const file = input.files[0]
+    if (!file) return
+    const request = version
+    input.setCustomValidity('Wait for the attachment to finish opening.')
+    let url
+    try {
+      if (file.size > 10 * 1024 * 1024) throw new Error('Choose a file under 10 MB.')
+      const [kind, mime] = attachmentType(new Uint8Array(await file.slice(0, 12).arrayBuffer()))
+      if (request !== version) return
+      if (!kind) throw new Error('Choose a JPG, PNG, WebP or PDF file.')
+      url = URL.createObjectURL(new Blob([file], { type: mime }))
+      if (kind !== 'pdf') {
+        const image = new Image()
+        image.src = url
+        await image.decode().catch(() => { throw new Error('This photo could not be opened. Choose another copy.') })
+      }
+      if (request !== version) return
+      attachment = { url, kind }
+      input.setCustomValidity('')
+      renderAttachment(preview, attachment)
+    } catch (error) {
+      if (request !== version) return
+      input.value = ''
+      input.setCustomValidity('')
+      preview.textContent = error instanceof Error ? error.message : 'This attachment could not be opened.'
+    } finally {
+      if (url && attachment?.url !== url) URL.revokeObjectURL(url)
+    }
+  })
+  form.addEventListener('reset', clear)
+  return { get current() { return attachment } }
+}
+
+function ownFormValues(form) {
+  return Object.fromEntries(new FormData(form))
+}
+
+function showInputError(form, { field, error }) {
+  const input = form.elements.namedItem(field)
+  const expandable = input.closest('details')
+  if (expandable) expandable.open = true
+  input.setCustomValidity(error)
+  input.reportValidity()
+}
+
+for (const form of [ownQuoteForm, ownComparisonForm, ownReplyForm]) {
+  const resetValidity = () => {
+    for (const input of form.elements) {
+      if (input.name !== 'attachment') input.setCustomValidity('')
+    }
+  }
+  form.addEventListener('input', resetValidity)
+  form.addEventListener('reset', resetValidity)
+}
+
+function resetOwnCase() {
+  ownQuoteForm.reset()
+  ownComparisonForm.reset()
+  ownReplyForm.reset()
+  if (firstQuote?.ownerEntered) {
+    firstQuote = undefined
+    context = undefined
+    review = undefined
+    comparison = undefined
+    ownerForm.reset()
+    for (const id of [
+      'review-source-original', 'review-source-reply', 'review-attachment', 'comparison-attachment-a',
+      'comparison-attachment-b', 'comparison-source-a', 'comparison-source-b', 'comparison-reply-text',
+      'review-details', 'review-questions', 'review-context', 'review-total', 'review-work',
+      'review-itemised-check', 'clarification-changes', 'comparison-rows', 'comparison-questions',
+      'comparison-context', 'comparison-total-a', 'comparison-total-b', 'itemised-check', 'own-comparison-context',
+    ]) document.getElementById(id).replaceChildren()
+    clearCopyStatus()
+    resetComparisonCopy()
+  }
+}
+
+ownQuoteForm.addEventListener('submit', event => {
+  event.preventDefault()
+  const result = enterQuotation(ownFormValues(ownQuoteForm))
+  if (result.error) return showInputError(ownQuoteForm, result)
+  const { clarification, ...previous } = firstQuote ?? {}
+  const changed = JSON.stringify(previous) !== JSON.stringify(result.quotation)
+  if (changed) {
+    ownComparisonForm.reset()
+    ownReplyForm.reset()
+    comparison = undefined
+  }
+  firstQuote = changed || !clarification ? result.quotation : { ...result.quotation, clarification }
+  review = reviewQuotation(firstQuote)
+  showScreen('owner')
+})
+
 sampleForm.addEventListener('submit', event => {
   event.preventDefault()
   loadSample(new FormData(sampleForm).get('sample'))
@@ -249,7 +406,11 @@ ownerForm.addEventListener('submit', event => {
   }
   const owner = { year: form.get('year'), model, variant: form.get('variant').trim(), symptoms: form.get('symptoms').trim() }
   if (!changeCurrentPilotCase({ type: 'confirm-owner', context: owner })) return
+  const previousVehicle = context?.vehicle
   loadOwnerContext(owner)
+  if (firstQuote.ownerEntered && context.vehicle !== previousVehicle) {
+    ownComparisonForm.elements.namedItem('sameVehicle').checked = false
+  }
   showReview()
 })
 
@@ -268,22 +429,31 @@ function showReview() {
   document.querySelector('#review-heading').textContent = review.title
   document.querySelector('#review-total').textContent = review.total
   document.querySelector('#review-work').textContent = review.work
+  document.querySelector('#review-amount-note').hidden = !firstQuote.combinedPartsAndLabour
+  renderAmountChecks('review-itemised-check', [review.amountCheck])
   document.querySelector('#review-source').open = false
   document.querySelector('#review-source-summary').textContent = clarification
     ? 'View original quotation and reply' : 'View original quotation'
   document.querySelector('#review-source-original').textContent = firstQuote.source
+  renderAttachment(document.querySelector('#review-attachment'), firstQuote.ownerEntered ? ownAttachment.current : null)
   document.querySelector('#review-source-clarification').hidden = !clarification
   document.querySelector('#review-source-reply').textContent = clarification?.source ?? ''
   document.querySelector('#partial-notice').hidden = review.outcome !== 'partial'
+  document.querySelector('#partial-notice').textContent = firstQuote.ownerEntered
+    ? 'You can review the work and total. Ask the workshop to clarify any unreadable details.'
+    : 'Staff could verify the work and total. Ask the workshop to clarify the unreadable detail.'
   document.querySelector('#review-identity').hidden = !identityCheck
   if (identityCheck) {
     document.querySelector('#review-identity-result').textContent =
       identityCheck.status + ' · ' + dateFormat.format(new Date(identityCheck.checkedAt))
     document.querySelector('#review-identity-source').textContent = identityCheck.source
   }
-  document.querySelector('#review-details-heading').textContent = clarification ? 'Quotation details' : 'Details to clarify'
+  document.querySelector('#review-details-heading').textContent = clarification || firstQuote.ownerEntered ? 'Quotation details' : 'Details to clarify'
   document.querySelector('#clarification-invitation').hidden = Boolean(clarification)
+  document.querySelector('#clarification-invitation-text').textContent = firstQuote.ownerEntered
+    ? 'Enter what the workshop confirmed and see what changed.' : 'Add a checked sample reply to update the review.'
   document.querySelector('#clarification-record').hidden = !clarification
+  document.querySelector('#example-services').hidden = Boolean(firstQuote.ownerEntered)
   if (clarification) {
     const changes = review.details.filter(detail => detail.previous !== undefined)
     renderTableRows('clarification-changes', changes.map(({ name, previous, display }) => ({
@@ -297,6 +467,11 @@ function showReview() {
 }
 
 function startComparison() {
+  if (firstQuote.ownerEntered) {
+    document.querySelector('#own-comparison-context').textContent = context.vehicle + ' · ' + firstQuote.work.value
+    showScreen('own-second-quote')
+    return
+  }
   comparisonForm.reset()
   document.querySelector('#second-source').textContent = secondQuote.source
   document.querySelector('#comparison-vehicle').textContent = context.vehicle
@@ -304,6 +479,10 @@ function startComparison() {
 }
 
 function startClarification() {
+  if (firstQuote.ownerEntered) {
+    showScreen('own-reply')
+    return
+  }
   clarificationForm.reset()
   document.querySelector('#original-for-clarification').textContent = firstQuote.source
   document.querySelector('#reply-to-check').textContent = sampleReply.source
@@ -318,6 +497,17 @@ clarificationForm.addEventListener('submit', event => {
   if (!changeCurrentPilotCase({ type: 'clarify' })) return
   firstQuote = revised
   review = reviewQuotation(revised)
+  showReview()
+})
+
+ownReplyForm.addEventListener('submit', event => {
+  event.preventDefault()
+  const input = ownFormValues(ownReplyForm)
+  const result = enterReply(input)
+  if (result.error) return showInputError(ownReplyForm, result)
+  firstQuote = applyClarification(firstQuote, result.reply, input.replyVerified === 'on')
+  review = reviewQuotation(firstQuote)
+  ownReplyForm.reset()
   showReview()
 })
 
@@ -345,32 +535,59 @@ function renderTableRows(id, rows) {
 
 comparisonForm.addEventListener('submit', event => {
   event.preventDefault()
-  const confirmed = new FormData(comparisonForm)
-  const result = compareQuotations(firstQuote, secondQuote, {
-    sameVehicle: confirmed.has('sameVehicle'),
-    sameRepair: confirmed.has('sameRepair'),
+  showComparison(secondQuote, new FormData(comparisonForm))
+})
+
+ownComparisonForm.addEventListener('submit', event => {
+  event.preventDefault()
+  const result = enterQuotation(ownFormValues(ownComparisonForm))
+  if (result.error) return showInputError(ownComparisonForm, result)
+  showComparison(result.quotation, new FormData(ownComparisonForm))
+})
+
+function renderAmountChecks(id, checks) {
+  const status = document.getElementById(id)
+  const lines = checks.flatMap((check, index) => {
+    if (!check) return []
+    const prefix = checks.length === 1 ? '' : index === 0 ? 'Quote A · ' : 'Quote B · '
+    return [prefix + 'Sum of entered line items: ' + formatSen(check.calculatedSen) +
+      (check.matches ? ' matches the stated total.' : ' differs from the stated total. Check whether any charges are missing.')]
+  })
+  status.hidden = lines.length === 0
+  status.textContent = lines.join('\n')
+}
+
+function showComparison(otherQuote, confirmed) {
+  const result = compareQuotations(firstQuote, otherQuote, {
+    sameVehicle: confirmed.has('sameVehicle'), sameRepair: confirmed.has('sameRepair'),
   })
   if (result.outcome !== 'comparison') return
   comparison = result
 
   document.querySelector('#comparison-context').textContent =
-    context.vehicle + ' · Front brake pad replacement'
+    context.vehicle + ' · ' + (firstQuote.ownerEntered ? firstQuote.work.value : 'Front brake pad replacement')
   const [a, b] = result.quotes
   document.querySelector('#comparison-total-a').textContent = a.total
   document.querySelector('#comparison-total-b').textContent = b.total
-  const itemised = document.querySelector('#itemised-check')
-  const check = result.amountChecks[1]
-  itemised.hidden = !check
-  if (check) itemised.textContent = 'Quote B itemised sum ' + formatSen(check.calculatedSen) +
-    (check.matches ? ' matches the stated total.' : ' differs from the stated total.')
+  renderAmountChecks('itemised-check', result.amountChecks)
   document.querySelector('#comparison-source-a').textContent = a.source
   document.querySelector('#comparison-source-b').textContent = b.source
+  renderAttachment(document.querySelector('#comparison-attachment-a'), firstQuote.ownerEntered ? ownAttachment.current : null)
+  renderAttachment(document.querySelector('#comparison-attachment-b'), firstQuote.ownerEntered ? secondAttachment.current : null)
   document.querySelector('#comparison-reply').hidden = !firstQuote.clarification
   document.querySelector('#comparison-reply-text').textContent = firstQuote.clarification?.source ?? ''
   renderTableRows('comparison-rows', result.rows)
   renderList('comparison-questions', result.questions)
+  resetComparisonCopy()
   showScreen('comparison')
-})
+}
+
+function resetComparisonCopy() {
+  const fallback = document.querySelector('#comparison-copy-fallback')
+  fallback.value = ''
+  fallback.hidden = true
+  document.querySelector('#comparison-copy-status').textContent = ''
+}
 
 function activeReport() {
   return formatReviewReport({
@@ -444,15 +661,15 @@ function downloadReport(report) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-async function copyQuestions() {
-  const questions = review.questions.map((question, i) => `${i + 1}. ${question}`).join('\n')
-  const status = document.querySelector('#copy-status')
+async function copyQuestions({ questions, statusId, fallbackId }) {
+  const text = questions.map((question, i) => `${i + 1}. ${question}`).join('\n')
+  const status = document.getElementById(statusId)
   try {
-    await navigator.clipboard.writeText(questions)
+    await navigator.clipboard.writeText(text)
     status.textContent = 'Questions copied.'
   } catch {
-    const fallback = document.querySelector('#copy-fallback')
-    fallback.value = questions
+    const fallback = document.getElementById(fallbackId)
+    fallback.value = text
     fallback.hidden = false
     fallback.focus()
     fallback.select()
@@ -594,11 +811,15 @@ clearDataForm.addEventListener('submit', event => {
   const status = document.querySelector('#clear-data-status')
   try {
     clearDemoData(window.localStorage)
+    resetOwnCase()
+    openedSavedReport = undefined
+    document.querySelector('#saved-report-text').textContent = ''
+    document.querySelector('#saved-report-title').textContent = ''
     updateSavedReviewControls(null)
     clearDataForm.reset()
-    status.textContent = 'Mekaneed sample data cleared from this browser.'
+    status.textContent = 'Mekaneed data cleared from this browser.'
   } catch {
-    status.textContent = 'This browser couldn’t clear the sample data.'
+    status.textContent = 'This browser couldn’t clear the local data.'
   }
 })
 
@@ -797,11 +1018,23 @@ function openPilotCase(id) {
 }
 
 const actions = {
+  'start-own': () => {
+    leavePilotCase()
+    resetOwnCase()
+    ownerForm.reset()
+    for (const name of ['model', 'year', 'symptoms']) ownerForm.elements.namedItem(name).value = ''
+    identityCheck = undefined
+    document.querySelector('#own-quote-edit-note').hidden = true
+    showScreen('own-quote')
+  },
   'choose-sample': () => {
     leavePilotCase()
+    resetOwnCase()
     showScreen('sample')
   },
   'try-another-sample': () => {
+    const own = firstQuote.ownerEntered
+    if (own) return actions['start-own']()
     sampleForm.reset()
     ownerForm.reset()
     showScreen('sample')
@@ -823,12 +1056,16 @@ const actions = {
   },
   'open-delivery': openDelivery,
   'back-from-delivery': () => showScreen(deliveryReturnScreen),
-  'review-source': () => showScreen('verify'),
+  'review-source': () => {
+    if (!firstQuote.ownerEntered) return showScreen('verify')
+    document.querySelector('#own-quote-edit-note').hidden = !firstQuote.clarification && !comparison
+    showScreen('own-quote')
+  },
   'edit-vehicle': () => showScreen('owner'),
   'start-clarification': startClarification,
   'start-comparison': startComparison,
-  'return-review': () => showScreen('review'),
-  'edit-comparison': () => showScreen('second-quote'),
+  'return-review': showReview,
+  'edit-comparison': () => showScreen(firstQuote.ownerEntered ? 'own-second-quote' : 'second-quote'),
   'save-report': saveActiveReport,
   'open-saved': openSavedReport,
   'export-report': () => downloadReport(activeReport()),
@@ -840,7 +1077,10 @@ const actions = {
     loadSample('legible')
     showScreen('verify')
   },
-  copy: copyQuestions,
+  copy: () => copyQuestions({ questions: review.questions, statusId: 'copy-status', fallbackId: 'copy-fallback' }),
+  'copy-comparison': () => copyQuestions({
+    questions: comparison.questions, statusId: 'comparison-copy-status', fallbackId: 'comparison-copy-fallback',
+  }),
 }
 
 for (const button of document.querySelectorAll('[data-action]')) {

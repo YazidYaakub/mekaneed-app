@@ -1,4 +1,4 @@
-import { describeField, reconcileItemisedTotal } from './review.mjs'
+import { describeField, reconcileItemisedTotal, reviewQuotation } from './review.mjs'
 
 const repairDetails = [
   ['pads', 'Front brake pads'],
@@ -21,8 +21,6 @@ function describeDetail(quotation, key) {
   return field
 }
 
-// Compare the front brake pad sample only. These rows represent known details
-// of this job and use a common key for each detail on both quotations.
 export function compareQuotations(first, second, confirmation) {
   if (confirmation.sameVehicle !== true || confirmation.sameRepair !== true) {
     return { outcome: 'confirmation-needed' }
@@ -35,6 +33,21 @@ export function compareQuotations(first, second, confirmation) {
     'Which parts and labour are included in each quoted total?',
     'What warranty applies to the parts and workmanship for each quote?',
   ]
+  const amountChecks = [first, second].map(reconcileItemisedTotal)
+  if (first.ownerEntered && second.ownerEntered) {
+    const [a, b] = [first, second].map(reviewQuotation)
+    const rows = [
+      { label: 'Proposed work', first: a.work, second: b.work },
+      ...a.details.map(({ name, display }, index) => ({
+        label: name, first: display, second: b.details[index].display,
+      })),
+    ]
+    if (a.work.toLocaleLowerCase() !== b.work.toLocaleLowerCase()) {
+      rows[0].note = 'Wording differs. Confirm what each quote includes.'
+      questions.unshift('What additional work or parts, if any, does each quotation include?')
+    }
+    return { outcome: 'comparison', quotes, rows, questions, amountChecks }
+  }
   const rows = repairDetails.map(([key, label]) => {
     const a = describeDetail(first, key)
     const b = describeDetail(second, key)
@@ -45,5 +58,5 @@ export function compareQuotations(first, second, confirmation) {
     }
     return row
   })
-  return { outcome: 'comparison', quotes, rows, questions, amountChecks: [first, second].map(reconcileItemisedTotal) }
+  return { outcome: 'comparison', quotes, rows, questions, amountChecks }
 }
