@@ -2,13 +2,21 @@
 
 **Understand a workshop quotation before approving a repair.**
 
-[![Live demo on Vercel](https://img.shields.io/badge/Live_demo-Vercel-black?logo=vercel)](https://mekaneed-app.vercel.app/)
+[![Live app on Vercel](https://img.shields.io/badge/Live_app-Vercel-black?logo=vercel)](https://mekaneed-app.vercel.app/)
 [![Pull request checks](https://github.com/YazidYaakub/mekaneed-app/actions/workflows/pull-request.yml/badge.svg?event=pull_request)](https://github.com/YazidYaakub/mekaneed-app/actions/workflows/pull-request.yml)
 [![Release and deploy](https://github.com/YazidYaakub/mekaneed-app/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/YazidYaakub/mekaneed-app/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/YazidYaakub/mekaneed-app)](https://github.com/YazidYaakub/mekaneed-app/releases/latest)
 [![Apache 2.0 license](https://img.shields.io/github/license/YazidYaakub/mekaneed-app)](LICENSE)
 
-Mekaneed is an ENT600 web demo for Malaysian car owners. It explains the quoted work and charges, flags details that need clarification, and suggests questions to ask the workshop. You can also compare two quotations for the same vehicle and repair.
+Mekaneed is an ENT600 web app for Malaysian car owners. It shows the quoted work and charges, flags details that need clarification, and suggests questions to ask the workshop. You can also compare two quotations for the same vehicle and repair.
+
+## Review your own quotation
+
+Open [Mekaneed](https://mekaneed-app.vercel.app/) and choose **Enter a quotation**. Paste or transcribe the relevant wording, enter the proposed work and stated total, and confirm the vehicle details. You can attach a JPG, PNG, WebP or PDF up to 10 MB as a reference. If you enter every itemised charge, Mekaneed can check the sum against the stated total.
+
+The review distinguishes omitted and unreadable details and gives you questions to copy. You can enter a second quotation, add one workshop reply, and save or export the review. This flow uses your transcription. A qualified mechanic can assess the vehicle if the repair recommendation is unclear.
+
+Quotation text and attachments stay in the browser. Attachments are held in the open tab. **Save review** deliberately keeps a text snapshot in this browser. **Manage local data** clears that snapshot and sample cases. Exported copies stay wherever you download them.
 
 ## Try the demo
 
@@ -28,7 +36,7 @@ From a regular or partial review, you can also do the following.
 - **Apply a clarification.** Select **Add workshop reply** and check the reply against Quote A. The revised review shows what changed and keeps the original wording and RM450 total.
 - **Keep the review.** **Save review** keeps one snapshot in this browser. Use **Open saved review** after reloading, or **Export review** to download a text copy with the source quotations and workshop questions.
 
-All quotations, offers and workshop partners are fictional. Sample cases and saved reviews stay in the current browser. Use **Local demo data** on the first screen to clear them.
+The sample quotations, offers and workshop partners are fictional. Sample staff cases stay in the current browser.
 
 ## Explore the staff workflow
 
@@ -56,7 +64,7 @@ node --test *.test.mjs
 node build.mjs
 ```
 
-The build writes five browser assets to `dist/`.
+The build writes the browser assets to `dist/`.
 
 ## Pull requests, releases and deployment
 

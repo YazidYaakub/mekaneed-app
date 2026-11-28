@@ -36,8 +36,6 @@ button { cursor: pointer; }
   margin: auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
 }
 .brand { display: flex; align-items: center; gap: 11px; font-size: 1.3rem; font-weight: 760; }
 .brand-mark {
@@ -50,20 +48,6 @@ button { cursor: pointer; }
   color: white;
   font-size: 1.06rem;
 }
-.demo-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: #1a458a;
-  background: #eaf1ff;
-  border-radius: 20px;
-  padding: 7px 12px;
-  font-size: .8rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.demo-label > span { height: 7px; width: 7px; border-radius: 50%; background: var(--blue); }
-
 .workspace {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
@@ -185,6 +169,7 @@ blockquote {
   padding: 14px;
   font-weight: 670;
   white-space: pre-line;
+  overflow-wrap: anywhere;
   line-height: 1.48;
 }
 .data-list { margin-top: 9px; }
@@ -213,6 +198,18 @@ blockquote {
   cursor: pointer;
 }
 .form-fields { display: grid; gap: 14px; }
+.own-entry { margin-bottom: 22px; }
+.own-entry p { margin-top: 6px; }
+.sample-heading { margin-bottom: 10px; }
+.field-hint { color: var(--muted); font-size: .875rem; margin-top: -6px; }
+.quote-extra summary { cursor: pointer; font-weight: 680; }
+.quote-extra .form-fields { margin-top: 16px; }
+.form-fields .inline-check { display: flex; align-items: start; gap: 8px; margin: 0; }
+.attachment-preview:empty { display: none; }
+.attachment-preview { display: grid; justify-items: start; gap: 8px; padding-top: 6px; overflow-wrap: anywhere; }
+.attachment-preview img { display: block; max-width: 100%; max-height: 360px; object-fit: contain; }
+.attachment-preview a { color: inherit; text-underline-offset: .2em; }
+.itemised-check, .review-details dd, .comparison-details td { white-space: pre-line; overflow-wrap: anywhere; }
 .field-pair { display: grid; grid-template-columns: minmax(0, 4fr) minmax(82px, 1fr); gap: 10px; }
 .form-fields label { display: block; min-width: 0; font-size: .89rem; font-weight: 680; }
 .optional { color: var(--muted); font-size: .79rem; margin-left: 4px; font-weight: 500; }
@@ -229,6 +226,12 @@ blockquote {
   font-size: 1rem;
 }
 textarea { resize: vertical; }
+.field-pair.quote-fields { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.field-pair.detail-input-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+@media (max-width: 460px) {
+  .field-pair.quote-fields, .field-pair.detail-input-grid { grid-template-columns: minmax(0, 1fr); }
+}
 
 .amount-panel {
   display: grid;
@@ -249,7 +252,8 @@ textarea { resize: vertical; }
   letter-spacing: .06em;
 }
 #review-total { font-size: 2.6rem; line-height: 1; font-weight: 770; letter-spacing: -.04em; }
-#review-work { font-weight: 690; }
+#review-work { font-weight: 690; overflow-wrap: anywhere; }
+#review-context, #review-findings, #own-comparison-context, #comparison-context, #review-questions { overflow-wrap: anywhere; }
 .amount-note { margin-top: 4px; color: #dce7f9; font-size: .9rem; }
 .notice {
   padding: 13px 16px;

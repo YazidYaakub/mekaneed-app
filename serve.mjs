@@ -7,6 +7,7 @@ const files = new Map([
   ['/styles.css', ['styles.css', 'text/css']],
   ['/app.mjs', ['app.mjs', 'text/javascript']],
   ['/review.mjs', ['review.mjs', 'text/javascript']],
+  ['/quotation-input.mjs', ['quotation-input.mjs', 'text/javascript']],
   ['/comparison.mjs', ['comparison.mjs', 'text/javascript']],
 ])
 

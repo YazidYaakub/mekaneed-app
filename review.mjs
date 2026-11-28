@@ -4,6 +4,17 @@ const reviewFields = [
   ['warranty', 'Parts and workmanship warranty', () => 'What is covered for parts and workmanship, and for how long?'],
 ]
 
+const enteredReviewFields = [
+  ['workshop', 'Workshop name', () => 'What is the name of the workshop issuing this quotation?'],
+  ['quantity', 'Quantity', () => 'How many of each part or service are included?'],
+  reviewFields[0],
+  ['condition', 'Part condition', () => 'Are the parts new, used or reconditioned?'],
+  reviewFields[1],
+  ['partsWarranty', 'Parts warranty', () => 'What does the parts warranty cover, and for how long?'],
+  ['workmanshipWarranty', 'Workmanship warranty', () => 'Is the repair work covered, and for how long?'],
+  ['itemised', 'Entered line items', () => 'Can you provide a breakdown of the charges, including any taxes and discounts?'],
+]
+
 export function describeField(field) {
   if (field?.unreadable) return { status: 'unreadable', display: 'Unreadable' }
   if (field?.value) return { status: 'stated', display: field.value }
@@ -17,7 +28,7 @@ export function applyClarification(quotation, reply, verified) {
   return { ...quotation, clarification: reply }
 }
 
-export function reviewQuotation(quotation) {
+export function reviewQuotation(quotation, workshopFindings = '') {
   const work = quotation.work?.value
   const total = quotation.total?.value
   const unresolved = []
@@ -25,8 +36,13 @@ export function reviewQuotation(quotation) {
   if (!total) unresolved.push('Quoted total')
   if (unresolved.length) return { outcome: 'clearer-copy', unresolved }
 
-  const questions = ['What did you find during the brake inspection?']
-  const details = reviewFields.map(([key, name, question]) => {
+  const questions = [quotation.ownerEntered
+    ? workshopFindings
+      ? `How do the inspection findings support the proposed work: ${work}?`
+      : `What did you find during the inspection that led to this recommendation: ${work}?`
+    : 'What did you find during the brake inspection?']
+  const fields = quotation.ownerEntered ? enteredReviewFields : reviewFields
+  const details = fields.map(([key, name, question]) => {
     const original = describeField(quotation.details[key])
     const reply = quotation.clarification?.details[key]
     const field = reply ? describeField(reply) : original
@@ -37,7 +53,9 @@ export function reviewQuotation(quotation) {
   const outcome = details.some(detail => detail.status === 'unreadable') ? 'partial' : 'review'
   const baseTitle = outcome === 'partial' ? 'Partial quotation review' : 'Quotation review'
   const title = quotation.clarification ? 'Revised ' + baseTitle.toLowerCase() : baseTitle
-  return { outcome, title, work, total, details, questions }
+  const amountCheck = quotation.ownerEntered ? reconcileItemisedTotal(quotation) : null
+  if (amountCheck && !amountCheck.matches) questions.splice(1, 0, 'Can you explain the difference between the line items and the quoted total?')
+  return { outcome, title, work, total, details, questions, amountCheck }
 }
 
 export function recordWorkshopCheck({ issuer, listing, source, at = new Date().toISOString() }) {
@@ -64,11 +82,12 @@ export function formatReviewReport({ context, quotation, review, comparison, ide
   const title = comparison ? 'Quotation comparison' : reviewTitle
   const lines = [
     `Mekaneed — ${title}`,
-    'Fictional demo',
+    quotation.ownerEntered ? 'Owner-entered quotation · Review based on entered information' : 'Fictional demo',
     '',
     `Vehicle: ${context.vehicle}`,
   ]
   if (context.symptoms) lines.push(`Owner notes: ${context.symptoms}`)
+  if (context.workshopFindings) lines.push(`Workshop findings as entered: ${context.workshopFindings}`)
   lines.push(`Proposed work: ${review.work}`)
   if (comparison) {
     const [first, second] = comparison.quotes
@@ -90,10 +109,15 @@ export function formatReviewReport({ context, quotation, review, comparison, ide
   } else {
     lines.push(
       `Quoted total: ${review.total}`,
+      ...(quotation.ownerEntered && quotation.combinedPartsAndLabour ? ['Parts and labour: Combined in the quoted total.'] : []),
       '',
       'QUOTATION DETAILS',
       ...review.details.map(detail => `${detail.name}: ${detail.display}`),
     )
+    if (review.amountCheck) {
+      const { calculatedSen, matches } = review.amountCheck
+      lines.push(`Sum of entered line items: ${formatSen(calculatedSen)} (${matches ? 'matches' : 'differs from'} the stated total)`)
+    }
   }
 
   if (quotation.clarification) {

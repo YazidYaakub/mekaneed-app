@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#112341">
+  <meta name="description" content="Review and compare Malaysian workshop quotations before approving a repair.">
   <title>Mekaneed · Quotation review</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.mjs"></script>
@@ -12,7 +13,6 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand"><span class="brand-mark" aria-hidden="true">M</span>Mekaneed</div>
-      <span class="demo-label"><span aria-hidden="true"></span>Fictional demo</span>
     </div>
   </header>
   <main class="workspace" id="workspace">
@@ -20,7 +20,7 @@
       <p class="workflow-label">QUOTATION REVIEW</p>
       <ol class="steps">
         <li data-step="sample" aria-current="step"><span class="step-number" aria-hidden="true">1</span><span>Quotation</span></li>
-        <li data-step="verify"><span class="step-number" aria-hidden="true">2</span><span>Staff check</span></li>
+        <li data-step="verify"><span class="step-number" aria-hidden="true">2</span><span id="quote-step-label">Check details</span></li>
         <li data-step="owner"><span class="step-number" aria-hidden="true">3</span><span>Vehicle</span></li>
         <li data-step="review"><span class="step-number" aria-hidden="true">4</span><span>Review</span></li>
       </ol>
@@ -49,9 +49,18 @@
       <section data-screen="sample">
         <div class="screen-heading">
           <h1 tabindex="-1">Start with a quotation</h1>
-          <p>Choose a fictional workshop quotation to try a review before approving a repair.</p>
+          <p>See what your workshop quoted, what’s missing, and what to ask before approving the repair.</p>
+        </div>
+        <div class="card own-entry">
+          <h2>Review your own quotation</h2>
+          <p>Paste or transcribe the details from a message, photo or PDF. Your quotation stays in this browser.</p>
+          <div class="actions">
+            <button class="primary" type="button" data-action="start-own">Enter a quotation <span aria-hidden="true">→</span></button>
+            <button class="secondary" type="button" data-action="open-saved" hidden>Open saved review</button>
+          </div>
         </div>
         <form id="sample-form">
+          <h2 class="sample-heading">Try a fictional example</h2>
           <fieldset class="sample-options">
             <legend class="sr-only">Choose a sample quotation</legend>
             <label class="sample-option">
@@ -77,20 +86,80 @@
             </label>
           </fieldset>
           <div class="actions">
-            <button class="primary" type="submit">Continue to staff check <span aria-hidden="true">→</span></button>
-            <button class="secondary" type="button" data-action="open-saved" hidden>Open saved review</button>
+            <button class="secondary" type="submit">Continue to staff check <span aria-hidden="true">→</span></button>
           </div>
         </form>
         <section class="card staff-entry" aria-labelledby="staff-entry-heading">
-          <h2 id="staff-entry-heading">Staff workspace</h2>
+          <h2 id="staff-entry-heading">Sample staff workspace</h2>
           <p>Send the selected sample to staff or continue a case in the queue.</p>
           <div class="actions">
             <button class="secondary" type="button" data-action="queue-sample">Send to staff queue</button>
             <button class="secondary" type="button" data-action="open-staff-queue">Open staff queue</button>
-            <button class="secondary" type="button" data-action="open-demo-data">Local demo data</button>
+            <button class="secondary" type="button" data-action="open-demo-data">Manage local data</button>
           </div>
         </section>
       </section>
+
+      <section data-screen="own-quote" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Enter your quotation</h1>
+          <p>Copy what the workshop wrote. Remove names, phone numbers, plate numbers and other personal details first.</p>
+        </div>
+        <form id="own-quote-form" method="post" autocomplete="off">
+          <div class="card form-fields">
+            <div data-quote-input></div>
+            <p class="field-hint" id="own-quote-edit-note" hidden>Changing the quotation clears the current comparison and workshop reply.</p>
+          </div>
+          <div class="actions">
+            <button class="primary" type="submit">Continue to vehicle details <span aria-hidden="true">→</span></button>
+            <button class="secondary" type="button" data-action="choose-sample">Back to start</button>
+          </div>
+        </form>
+      </section>
+
+      <template id="quote-input-template">
+        <div class="form-fields">
+          <label>Attach a photo or PDF <span class="optional">Optional</span>
+            <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
+          </label>
+          <p class="field-hint" data-hint-for="attachment">JPG, PNG, WebP or PDF, up to 10 MB. The attachment stays in this tab.</p>
+          <div class="attachment-preview" data-attachment-preview aria-live="polite"></div>
+          <label>Quotation text
+            <textarea name="source" rows="4" maxlength="6000" required></textarea>
+          </label>
+          <p class="field-hint" data-hint-for="source">Paste the message or transcribe the work, charges and relevant terms from the attachment.</p>
+          <div class="field-pair quote-fields">
+            <label>Proposed work <input name="work" maxlength="180" required placeholder="e.g. Replace front brake pads"></label>
+            <label>Quoted total (RM) <input name="total" inputmode="decimal" maxlength="18" required placeholder="e.g. 450.00"></label>
+          </div>
+          <label class="check inline-check"><input type="checkbox" name="combined">
+            <span>The total combines parts and labour.</span>
+          </label>
+          <details class="quote-extra">
+            <summary>Add itemisation, parts or warranty details</summary>
+            <div class="form-fields">
+              <p class="field-hint">Leave omitted fields blank. Enter ? for details you can’t read.</p>
+              <div data-detail-inputs></div>
+              <label>Itemised charges <span class="optional">Optional</span>
+                <textarea name="charges" rows="3" maxlength="1500" placeholder="Brake pads | 330&#10;Labour | 120"></textarea>
+              </label>
+              <p class="field-hint" data-hint-for="charges">For an arithmetic check, enter every charge on its own line as Description | amount. Use a minus sign for discounts.</p>
+            </div>
+          </details>
+        </div>
+      </template>
+
+      <template id="quote-details-template">
+        <div class="field-pair detail-input-grid">
+          <label>Workshop name <input name="workshop" maxlength="140"></label>
+          <label>Quantity <input name="quantity" maxlength="100"></label>
+          <label>Part brand or code <input name="brand" maxlength="120"></label>
+          <label>Part condition <input name="condition" maxlength="120" placeholder="e.g. New"></label>
+          <label>Separate labour charge <input name="labour" maxlength="120"></label>
+          <label>Parts warranty <input name="partsWarranty" maxlength="120"></label>
+          <label>Workmanship warranty <input name="workmanshipWarranty" maxlength="120"></label>
+        </div>
+      </template>
 
       <section data-screen="staff-queue" hidden>
         <div class="screen-heading">
@@ -147,9 +216,9 @@
       <section data-screen="owner" hidden>
         <div class="screen-heading">
           <h1 tabindex="-1">Confirm your vehicle</h1>
-          <p>In the owner role, confirm or correct what you know about the car and the repair.</p>
+          <p id="owner-intro">In the owner role, confirm or correct what you know about the car and the repair.</p>
         </div>
-        <form id="owner-form">
+        <form id="owner-form" method="post" autocomplete="off">
           <div class="card form-fields">
             <div class="field-pair">
               <label>Model <input name="model" required maxlength="60" value="Perodua Myvi"></label>
@@ -158,6 +227,9 @@
             <label>Variant <span class="optional">Optional</span><input name="variant" maxlength="60"></label>
             <label>What did you notice? <span class="optional">Optional</span>
               <textarea name="symptoms" rows="3" maxlength="240">Front brakes squeal during braking.</textarea>
+            </label>
+            <label id="workshop-findings-field" hidden>What did the workshop report finding? <span class="optional">Optional</span>
+              <textarea name="workshopFindings" rows="3" maxlength="240"></textarea>
             </label>
           </div>
           <div class="actions">
@@ -171,15 +243,18 @@
         <div class="screen-heading">
           <h1 id="review-heading" tabindex="-1">Quotation review</h1>
           <p id="review-context"></p>
+          <p id="review-findings" hidden></p>
         </div>
         <div class="amount-panel">
           <div><span class="amount-label">WORKSHOP QUOTED TOTAL</span><strong id="review-total"></strong></div>
-          <div><p id="review-work"></p><p class="amount-note">One combined amount for parts and labour.</p></div>
+          <div><p id="review-work"></p><p class="amount-note" id="review-amount-note">One combined amount for parts and labour.</p></div>
         </div>
+        <p class="itemised-check" id="review-itemised-check" hidden></p>
         <details class="card clarification-sources" id="review-source">
           <summary id="review-source-summary">View original quotation</summary>
-          <h2>Original Quote A</h2>
+          <h2 id="review-quote-label">Original Quote A</h2>
           <blockquote id="review-source-original"></blockquote>
+          <div class="attachment-preview" id="review-attachment"></div>
           <div id="review-source-clarification" hidden>
             <h2>Workshop reply</h2>
             <blockquote id="review-source-reply"></blockquote>
@@ -222,11 +297,11 @@
         <div class="card compare-invitation" id="clarification-invitation">
           <div>
             <h2>Heard back from the workshop?</h2>
-            <p>Add a checked sample reply to update the review.</p>
+            <p id="clarification-invitation-text">Add a checked sample reply to update the review.</p>
           </div>
           <button class="secondary" type="button" data-action="start-clarification">Add workshop reply <span aria-hidden="true">→</span></button>
         </div>
-        <div class="card compare-invitation">
+        <div class="card compare-invitation" id="example-services">
           <div>
             <h2>Need more help?</h2>
             <p>See example expert review and workshop-match options.</p>
@@ -280,6 +355,27 @@
         </form>
       </section>
 
+      <section data-screen="own-reply" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Add a workshop reply</h1>
+          <p>Use the reply for this quotation and enter only the details the workshop clarified.</p>
+        </div>
+        <form id="own-reply-form" method="post" autocomplete="off">
+          <div class="card form-fields">
+            <label>Workshop reply <textarea name="source" rows="4" maxlength="4000" required></textarea></label>
+            <div data-detail-inputs></div>
+          </div>
+          <label class="check">
+            <input type="checkbox" name="replyVerified" required>
+            <span>I’ve checked that this reply applies to Quote A.</span>
+          </label>
+          <div class="actions">
+            <button class="primary" type="submit">Apply clarification <span aria-hidden="true">→</span></button>
+            <button class="secondary" type="button" data-action="return-review">Back to quotation review</button>
+          </div>
+        </form>
+      </section>
+
       <section data-screen="second-quote" hidden>
         <div class="screen-heading">
           <h1 tabindex="-1">Add a second quotation</h1>
@@ -306,6 +402,30 @@
         </form>
       </section>
 
+      <section data-screen="own-second-quote" hidden>
+        <div class="screen-heading">
+          <h1 tabindex="-1">Enter a second quotation</h1>
+          <p id="own-comparison-context"></p>
+        </div>
+        <form id="own-comparison-form" method="post" autocomplete="off">
+          <div class="card form-fields">
+            <div data-quote-input></div>
+          </div>
+          <label class="check">
+            <input name="sameVehicle" type="checkbox" required>
+            <span>Both quotations are for the same vehicle.</span>
+          </label>
+          <label class="check">
+            <input name="sameRepair" type="checkbox" required>
+            <span>Both quotations address the same repair, even if the work listed differs.</span>
+          </label>
+          <div class="actions">
+            <button class="primary" type="submit">Compare quotations <span aria-hidden="true">→</span></button>
+            <button class="secondary" type="button" data-action="return-review">Back to quotation review</button>
+          </div>
+        </form>
+      </section>
+
       <section data-screen="comparison" hidden>
         <div class="screen-heading">
           <h1 tabindex="-1">Compare quotations</h1>
@@ -324,7 +444,7 @@
         <p class="itemised-check" id="itemised-check" hidden></p>
         <div class="notice">
           <strong>Confirm the scope before comparing prices.</strong>
-          <p>Check which parts, work and warranty each price includes before deciding.</p>
+          <p>Check which parts, work and warranty each price includes before deciding. Similar line-item names can refer to different parts.</p>
         </div>
         <div class="card comparison-details">
           <h2>Work, charges and warranty</h2>
@@ -338,19 +458,24 @@
         <div class="card questions">
           <h2>Questions for the workshops</h2>
           <ul id="comparison-questions"></ul>
+          <button class="secondary" type="button" data-action="copy-comparison">Copy comparison questions</button>
+          <p class="copy-status" id="comparison-copy-status" role="status"></p>
+          <textarea id="comparison-copy-fallback" aria-label="Comparison questions to copy" rows="5" readonly hidden></textarea>
         </div>
         <div class="verification-grid comparison-sources">
           <article class="card quote">
-            <h2>Original Quote A</h2>
+            <h2 id="comparison-quote-label-a">Original Quote A</h2>
             <blockquote id="comparison-source-a"></blockquote>
+            <div class="attachment-preview" id="comparison-attachment-a"></div>
             <div class="clarification-sources" id="comparison-reply" hidden>
               <h3>Workshop reply for Quote A</h3>
               <blockquote id="comparison-reply-text"></blockquote>
             </div>
           </article>
           <article class="card quote">
-            <h2>Original Quote B</h2>
+            <h2 id="comparison-quote-label-b">Original Quote B</h2>
             <blockquote id="comparison-source-b"></blockquote>
+            <div class="attachment-preview" id="comparison-attachment-b"></div>
           </article>
         </div>
         <div data-report-slot></div>
@@ -482,20 +607,20 @@
 
       <section data-screen="demo-data" hidden>
         <div class="screen-heading">
-          <h1 tabindex="-1">Local demo data</h1>
-          <p>Use fictional details. The staff queue, sample permissions and saved review stay in this browser.</p>
+          <h1 tabindex="-1">Manage local data</h1>
+          <p>Your saved review and any sample staff cases stay in this browser.</p>
         </div>
         <form class="card service-card" id="clear-data-form">
-          <h2>Clear Mekaneed sample data</h2>
+          <h2>Clear Mekaneed data</h2>
           <p>This removes the sample cases and saved review from this browser.</p>
           <label class="check">
             <input type="checkbox" name="confirmClear" required>
-            <span>I want to clear the local sample cases and saved review.</span>
+            <span>I want to clear the saved review and local sample cases.</span>
           </label>
-          <div class="actions"><button class="secondary" type="submit">Clear sample data</button></div>
+          <div class="actions"><button class="secondary" type="submit">Clear local data</button></div>
           <p class="report-status" id="clear-data-status" role="status"></p>
         </form>
-        <div class="actions"><button class="secondary" type="button" data-action="choose-sample">Back to samples</button></div>
+        <div class="actions"><button class="secondary" type="button" data-action="choose-sample">Back to start</button></div>
       </section>
 
       <section data-screen="saved-report" hidden>
@@ -513,7 +638,7 @@
         </div>
       </section>
 
-      <noscript>Enable JavaScript to use this sample quotation review.</noscript>
+      <noscript>Enable JavaScript to use Mekaneed’s quotation review.</noscript>
     </div>
   </main>
 </body>

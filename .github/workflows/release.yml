@@ -140,17 +140,28 @@ jobs:
       - name: Verify the public site matches the release
         if: steps.current.outputs.deploy == 'true'
         run: |
+          headers_match() {
+            case "$1" in
+              index.html)
+                grep -qiE "^content-security-policy: .*connect-src 'none'.*frame-ancestors 'none'" "$2" &&
+                  grep -qiE '^referrer-policy:[[:space:]]*no-referrer[[:space:]]*$' "$2" &&
+                  grep -qiE '^x-content-type-options:[[:space:]]*nosniff[[:space:]]*$' "$2"
+                ;;
+              *.mjs) grep -qiE '^content-type:[[:space:]]*(application|text)/javascript([;[:space:]]|$)' "$2" ;;
+            esac
+          }
           for expected in .vercel/output/static/release.json dist/*; do
             asset="${expected##*/}"
             download="$RUNNER_TEMP/mekaneed-$asset"
             for attempt in {1..6}; do
               if curl --fail --silent --show-error --max-time 20 -H 'Cache-Control: no-cache' \
-                "https://mekaneed-app.vercel.app/$asset?release=$GITHUB_SHA&check=$attempt" -o "$download" \
-                && cmp -s "$expected" "$download"; then
+                "https://mekaneed-app.vercel.app/$asset?release=$GITHUB_SHA&check=$attempt" \
+                -o "$download" -D "$download.headers" \
+                && cmp -s "$expected" "$download" && headers_match "$asset" "$download.headers"; then
                 break
               fi
               if [[ "$attempt" == 6 ]]; then
-                echo "::error::The live $asset did not match release $GITHUB_SHA after six checks."
+                echo "::error::The live $asset body or required headers did not match release $GITHUB_SHA after six checks."
                 exit 1
               fi
               sleep 4
